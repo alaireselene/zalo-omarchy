@@ -12,7 +12,10 @@
     "build": "node scripts/build.js",
     "main": "SETUP=true BUILD=true node scripts/main.js",
     "main:setup": "SETUP=true node scripts/main.js",
-    "main:build": "BUILD=true node scripts/main.js"
+    "main:build": "BUILD=true node scripts/main.js",
+    "build:arch": "node scripts/build-arch.js",
+    "main:arch": "SETUP=true node scripts/build-arch.js",
+    "package:arch": "./packaging/arch/install.sh"
   },
   "keywords": [
     "zalo",

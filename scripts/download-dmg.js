@@ -65,25 +65,29 @@ async function main() {
 }
 
 async function downloadFile(url, destination) {
-  // Use wget for reliable download with progress
-  const wgetCommand = [
-    'wget',
-    '--progress=bar:force',  // Show progress bar
-    '--user-agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"',
-    `"${url}"`,
-    '-O', `"${destination}"`
-  ].join(' ');
+  const hasCurl = checkCommand('curl');
+  const dlCommand = hasCurl
+    ? `curl -L --progress-bar -A "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36" "${url}" -o "${destination}"`
+    : `wget --progress=bar:force --user-agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36" "${url}" -O "${destination}"`;
 
   try {
-    execSync(wgetCommand, {
-      stdio: 'inherit'  // Show wget progress in real-time
+    execSync(dlCommand, {
+      stdio: 'inherit'
     });
   } catch (error) {
-    // Clean up partial file on error
     if (fs.existsSync(destination)) {
       fs.unlinkSync(destination);
     }
-    throw new Error(`wget failed: ${error.message}`);
+    throw new Error(`Download failed: ${error.message}`);
+  }
+}
+
+function checkCommand(cmd) {
+  try {
+    execSync(`command -v ${cmd}`, { stdio: 'ignore' });
+    return true;
+  } catch (_) {
+    return false;
   }
 }
 

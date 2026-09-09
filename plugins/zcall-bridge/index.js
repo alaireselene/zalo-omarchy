@@ -44,6 +44,18 @@ const https = require('https');
 // it; wine 8.6 is lighter (54MB) but its msvcp140/ucrtbase lack
 // _Throw_C_error, which crashes ZaloCall when the video pipeline hits an
 // error (e.g. codec/format negotiation).
+function wineEnv(extra = {}) {
+  return Object.assign(
+    {},
+    process.env,
+    {
+      WINEDEBUG: process.env.WINEDEBUG || '-all',
+      WINEDLLOVERRIDES: process.env.WINEDLLOVERRIDES || 'mscoree,mshtml='
+    },
+    extra
+  );
+}
+
 const WINE_DOWNLOAD_URL =
   'https://github.com/Kron4ek/Wine-Builds/releases/download/11.14/wine-11.14-amd64.tar.xz';
 const RUNTIME_DIRNAME = 'zcall-wine-runtime';
@@ -184,7 +196,7 @@ function validateWine(winePath, prefix) {
   const valPrefix = prefix + '-validate';
   try {
     const res = spawnSync(winePath, [pipebridgePath, '--version'], {
-      env: Object.assign({}, process.env, { WINEPREFIX: valPrefix, WINEDEBUG: '-all' }),
+      env: wineEnv({ WINEPREFIX: valPrefix }),
       encoding: 'utf8',
       timeout: 120000
     });
@@ -301,104 +313,85 @@ async function installDownloadedWine(userDataDir, onProgress) {
 
 let askWindowOpen = false;
 
-/**
- * Custom always-on-top ask window (native dialogs can get covered by the
- * Zalo main window on Linux DEs). Resolves with the user's choice.
- */
-function showAskWindow(failedWine) {
-  const { ipcMain } = require('electron');
-  const win = new BrowserWindowModule({
-    width: 540,
-    height: 280,
-    frame: false,
-    resizable: false,
-    movable: true,
-    center: true,
-    alwaysOnTop: true,
-    skipTaskbar: false,
-    // Tiny internal window with static HTML — node integration is safe here.
-    webPreferences: { contextIsolation: false, nodeIntegration: true }
-  });
-  const downloadUrl = process.env.ZCALL_WINE_DOWNLOAD_URL || WINE_DOWNLOAD_URL;
-  const headLine = failedWine
-    ? 'Wine trên máy bạn không tương thích với tính năng gọi (không chạy được ứng dụng 32-bit). Tải bản Wine tương thích?'
-    : 'Tính năng gọi điện cần Wine. Tải và bật ngay bây giờ?';
-  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
-    body{font-family:sans-serif;background:#1f1f1f;color:#eee;margin:0;padding:20px 24px;-webkit-app-region:drag}
-    h3{margin:0 0 8px;font-size:16px}
-    p{font-size:13px;color:#ccc;margin:0 0 10px;line-height:1.45}
-    #url{font-size:11px;color:#6ab;text-overflow:ellipsis;overflow:hidden;white-space:nowrap;cursor:pointer;margin-bottom:14px;-webkit-app-region:no-drag}
-    label{font-size:13px;color:#ccc;display:block;margin-bottom:16px;-webkit-app-region:no-drag}
-    .row{display:flex;justify-content:flex-end;gap:10px;-webkit-app-region:no-drag}
-    button{font-size:13px;padding:8px 18px;border-radius:6px;border:none;cursor:pointer}
-    #yes{background:#0a6e3c;color:#fff}
-    #no{background:#3a3a3a;color:#eee}
-  </style></head><body>
-    <h3>Zalo — Tính năng gọi điện</h3>
-    <p>${headLine}<br>
-       Sẽ tải ~54MB về lưu trong dữ liệu của Zalo — không cần quyền quản trị,
-       không ảnh hưởng hệ thống.</p>
-    <div id="url" title="Mở nguồn tải trong trình duyệt">Nguồn tải: ${downloadUrl}</div>
-    <label><input type="checkbox" id="never"> Không hỏi lại lần sau nếu không tải</label>
-    <div class="row" style="justify-content:space-between">
-      <button id="browse">Chọn file wine có sẵn…</button>
-      <span>
-        <button id="no">Để sau</button>
-        <button id="yes">Tải và bật ngay</button>
-      </span>
-    </div>
-    <script>
-      const {ipcRenderer, shell} = require('electron');
-      function answer(download) {
-        ipcRenderer.send('zcall-ask-result', {
-          download,
-          neverAgain: document.getElementById('never').checked
-        });
-      }
-      document.getElementById('yes').onclick = () => answer(true);
-      document.getElementById('no').onclick = () => answer(false);
-      document.getElementById('browse').onclick = () => ipcRenderer.send('zcall-ask-browse');
-      document.getElementById('url').onclick = () => shell.openExternal('${downloadUrl}');
-    </script>
-  </body></html>`;
-  win.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(html));
+function getDistroWineCommand() {
+  let idLike = '';
+  try {
+    const osRelease = fs.readFileSync('/etc/os-release', 'utf8');
+    const m = osRelease.match(/^ID(?:_LIKE)?=(.+)$/gm);
+    idLike = (m || []).join('\n').toLowerCase();
+  } catch (e) { /* unknown distro */ }
 
-  return new Promise((resolve) => {
-    let resolved = false;
-    const finish = (result) => {
-      if (resolved) return;
-      resolved = true;
-      ipcMain.removeListener('zcall-ask-result', onResult);
-      ipcMain.removeListener('zcall-ask-browse', onBrowse);
-      resolve(result || { download: false, neverAgain: false });
-      // destroy AFTER resolve: destroy() emits 'closed' synchronously,
-      // which would otherwise let the fallback resolve a wrong value first
-      try { win.destroy(); } catch (e) { /* already closed */ }
-    };
-    const onResult = (_e, result) => finish(result);
-    const onBrowse = async () => {
-      const picked = await dialogModule.showOpenDialog(win, {
-        title: 'Chọn file wine',
-        properties: ['openFile']
-      });
-      const chosen = picked.filePaths && picked.filePaths[0];
-      if (!chosen) return;
-      if (validateWine(chosen, process.env.ZCALL_WINEPREFIX || path.join(os.homedir(), '.config', 'ZaloData', 'zcall-wine'))) {
-        finish({ download: false, neverAgain: false, pickedWine: chosen });
+  if (idLike.includes('arch') || fs.existsSync('/etc/arch-release')) {
+    return 'sudo pacman -S wine';
+  }
+  if (idLike.includes('fedora') || idLike.includes('rhel') || idLike.includes('centos')) {
+    return 'sudo dnf install wine';
+  }
+  return 'sudo apt install wine';
+}
+
+/**
+ * Native system dialog to prompt user for Wine installation/selection.
+ */
+async function showAskWindow(failedWine) {
+  getElectronModules();
+  const parent = (BrowserWindowModule && (BrowserWindowModule.getFocusedWindow() || BrowserWindowModule.getAllWindows()[0])) || null;
+  const wineCmd = getDistroWineCommand();
+
+  const message = failedWine
+    ? 'Wine trên máy bạn không tương thích với tính năng gọi (cần hỗ trợ 32-bit).'
+    : 'Tính năng gọi điện (voice & video call) cần Wine để hoạt động.';
+
+  const detail =
+    'Bạn có thể chọn một trong các cách sau:\n\n' +
+    '1. Tải Wine di động (~96MB, tự động lưu trong dữ liệu Zalo, không cần root).\n' +
+    '2. Chọn binary Wine đã cài đặt sẵn trên máy.\n' +
+    '3. Cài Wine hệ thống bằng lệnh: ' + wineCmd + '\n\n' +
+    '(Nếu để sau, tin nhắn văn bản và E2EE vẫn hoạt động bình thường).';
+
+  const res = await dialogModule.showMessageBox(parent, {
+    type: 'question',
+    title: 'Zalo — Tính năng gọi điện',
+    message,
+    detail,
+    buttons: ['Tải Wine tự động', 'Chọn file Wine…', 'Để sau'],
+    defaultId: 0,
+    cancelId: 2,
+    checkboxLabel: 'Không hỏi lại lần sau'
+  });
+
+  const neverAgain = res.checkboxChecked;
+
+  // Option 0: Download portable Wine
+  if (res.response === 0) {
+    return { download: true, neverAgain };
+  }
+
+  // Option 1: Browse for existing Wine binary
+  if (res.response === 1) {
+    const picked = await dialogModule.showOpenDialog(parent, {
+      title: 'Chọn binary Wine (ví dụ /usr/bin/wine)',
+      properties: ['openFile']
+    });
+    const chosen = picked.filePaths && picked.filePaths[0];
+    if (chosen) {
+      const prefix = process.env.ZCALL_WINEPREFIX || path.join(os.homedir(), '.config', 'ZaloData', 'zcall-wine');
+      if (validateWine(chosen, prefix)) {
+        return { download: false, pickedWine: chosen, neverAgain: false };
       } else {
-        dialogModule.showMessageBox(win, {
+        await dialogModule.showMessageBox(parent, {
           type: 'error',
           title: 'Zalo — Tính năng gọi điện',
-          message: 'Wine này không dùng được',
+          message: 'Wine không tương thích',
           detail: 'File đã chọn không chạy được ứng dụng 32-bit hoặc không phải wine hợp lệ:\n' + chosen
         });
       }
-    };
-    ipcMain.on('zcall-ask-result', onResult);
-    ipcMain.on('zcall-ask-browse', onBrowse);
-    // fallback: user closed the window somehow
-    win.on('closed', () => finish({ download: false, neverAgain: false }));
-  });
+    }
+    return { download: false, neverAgain: false };
+  }
+
+  // Option 2: Later
+  return { download: false, neverAgain };
 }
 
 function showProgressWindow() {
@@ -493,7 +486,7 @@ async function promptAndInstall(userDataDir, failedWine) {
     // First prefix init (~10-30s, done once)
     const prefix = process.env.ZCALL_WINEPREFIX || path.join(userDataDir, 'zcall-wine');
     spawnSync(wine, ['wineboot', '-u'], {
-      env: Object.assign({}, process.env, { WINEPREFIX: prefix, WINEDEBUG: '-all' }),
+      env: wineEnv({ WINEPREFIX: prefix }),
       stdio: 'ignore',
       timeout: 180000
     });
@@ -533,7 +526,7 @@ async function promptAndInstall(userDataDir, failedWine) {
         type: 'error',
         title: 'Zalo — Tính năng gọi điện',
         message: 'Không thể tải Wine',
-        detail: String((e && e.message) || e) + '\n\nBạn có thể thử lại từ menu khay hệ thống, hoặc cài Wine bằng lệnh: sudo apt install wine'
+        detail: String((e && e.message) || e) + '\n\nBạn có thể thử lại từ menu khay hệ thống, hoặc cài Wine bằng lệnh:\n' + getDistroWineCommand()
       });
     }
     return null;
@@ -581,7 +574,7 @@ function launch({ userDataDir }) {
       console.log('[zcall-bridge] initializing wine prefix:', prefix);
       try {
         spawnSync(candidate, ['wineboot', '-u'], {
-          env: Object.assign({}, process.env, { WINEPREFIX: prefix, WINEDEBUG: '-all' }),
+          env: wineEnv({ WINEPREFIX: prefix }),
           stdio: 'ignore',
           timeout: 180000
         });
@@ -632,6 +625,7 @@ function launch({ userDataDir }) {
   process.env.ZCALL_WINE = wine;
   process.env.ZCALL_WINEPREFIX = prefix;
   if (!process.env.WINEDEBUG) process.env.WINEDEBUG = '-all';
+  if (!process.env.WINEDLLOVERRIDES) process.env.WINEDLLOVERRIDES = 'mscoree,mshtml=';
 
   // Streamproxy: the capture shim is preloaded into the helper at ALL times.
   // It is inert while the bridge display is down (captures fall through to
@@ -724,197 +718,137 @@ function showBrokenWineDialog(winePath) {
   });
 }
 
-function openSetupDialog({ userDataDir }) {
+async function openSetupDialog({ userDataDir }) {
   getElectronModules();
-  if (!BrowserWindowModule) return;
-  const { ipcMain } = require('electron');
+  if (!dialogModule) return;
+
   const prefix = process.env.ZCALL_WINEPREFIX || path.join(userDataDir, 'zcall-wine');
+  const parent = (BrowserWindowModule && (BrowserWindowModule.getFocusedWindow() || BrowserWindowModule.getAllWindows()[0])) || null;
 
-  const win = new BrowserWindowModule({
-    width: 600,
-    height: 460,
-    frame: false,
-    resizable: false,
-    center: true,
-    alwaysOnTop: true,
-    webPreferences: { contextIsolation: false, nodeIntegration: true }
+  const currentWine = process.env.ZCALL_WINE || findWine() || findDownloadedWine(userDataDir);
+  const cfg = readConfig(userDataDir);
+  const downloadedWine = findDownloadedWine(userDataDir);
+
+  let statusText = currentWine
+    ? `Wine đang dùng: ${currentWine}` + (cfg.winePath ? `\n(Đường dẫn đã lưu: ${cfg.winePath})` : '')
+    : 'Chưa có Wine — tính năng gọi điện hiện chưa hoạt động.';
+
+  const buttons = ['Chọn file Wine…'];
+  const actions = ['browse'];
+
+  if (downloadedWine) {
+    buttons.push('Xóa Wine đã tải về');
+    actions.push('remove_downloaded');
+  } else {
+    buttons.push('Tải Wine tự động (~96MB)');
+    actions.push('download');
+  }
+
+  if (cfg.winePath) {
+    buttons.push('Bỏ lưu đường dẫn Wine');
+    actions.push('clear_saved');
+  }
+
+  buttons.push('Đóng');
+  actions.push('close');
+
+  const res = await dialogModule.showMessageBox(parent, {
+    type: 'info',
+    title: 'Zalo — Cài đặt gọi điện',
+    message: 'Cấu hình Wine cho tính năng gọi điện',
+    detail: statusText + '\n\nChọn một thao tác bên dưới:',
+    buttons,
+    defaultId: 0,
+    cancelId: buttons.length - 1
   });
-  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
-    body{font-family:sans-serif;background:#1f1f1f;color:#eee;margin:0;padding:20px 24px;-webkit-app-region:drag}
-    h3{margin:0 0 10px;font-size:16px}
-    #status{font-size:13px;color:#ccc;background:#2a2a2a;border-radius:6px;padding:10px 12px;margin-bottom:14px;line-height:1.5;word-break:break-all}
-    button{display:block;width:100%;font-size:13px;padding:10px;margin-bottom:10px;border-radius:6px;border:none;cursor:pointer;background:#3a3a3a;color:#eee;-webkit-app-region:no-drag}
-    button:hover{background:#4a4a4a}
-    .pathrow{display:flex;gap:8px;margin-bottom:10px;-webkit-app-region:no-drag}
-    .pathrow input{flex:1;font-size:13px;padding:9px 10px;border-radius:6px;border:1px solid #4a4a4a;background:#2a2a2a;color:#eee}
-    .pathrow button{width:auto;margin:0;white-space:nowrap}
-    #close{background:#2a2a2a}
-  </style></head><body>
-    <h3>Zalo — Cài đặt gọi điện</h3>
-    <div id="status">Đang kiểm tra…</div>
-    <div class="pathrow">
-      <input id="pathInput" placeholder="Nhập đường dẫn wine, ví dụ /usr/bin/wine">
-      <button id="setpath">Dùng đường dẫn này</button>
-    </div>
-    <button id="browse">Chọn file wine khác…</button>
-    <button id="download">Tải wine về (~54MB)</button>
-    <button id="clear">Bỏ lựa chọn wine đã lưu</button>
-    <button id="remove">Xóa wine đã tải về khỏi máy</button>
-    <button id="close">Đóng</button>
-    <script>
-      const {ipcRenderer} = require('electron');
-      // pass the command as the IPC argument so the main handler can match it
-      const send = (cmd, arg) => ipcRenderer.send(cmd, arg || cmd);
-      const closeWin = () => { send('zcall-cfg-close'); setTimeout(() => window.close(), 80); };
-      document.getElementById('browse').onclick = () => send('zcall-cfg-browse');
-      document.getElementById('download').onclick = () => send('zcall-cfg-download');
-      document.getElementById('clear').onclick = () => send('zcall-cfg-clear');
-      document.getElementById('remove').onclick = () => send('zcall-cfg-remove');
-      document.getElementById('setpath').onclick = () => send('zcall-cfg-setpath', document.getElementById('pathInput').value.trim());
-      document.getElementById('close').onclick = closeWin;
-      document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeWin(); });
-      ipcRenderer.on('zcall-cfg-status', (e, text) => {
-        document.getElementById('status').textContent = text;
-      });
-    </script>
-  </body></html>`;
-  win.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(html));
 
-  const currentWine = () => process.env.ZCALL_WINE || findWine() || findDownloadedWine(userDataDir);
-  const pushStatus = () => {
-    const w = currentWine();
-    const cfg = readConfig(userDataDir);
-    let text = w
-      ? 'Wine đang dùng: ' + w + (cfg.winePath ? '\n(Lựa chọn đã lưu: ' + cfg.winePath + ')' : '')
-      : 'Chưa có wine — tính năng gọi chưa hoạt động.';
-    try { win.webContents.send('zcall-cfg-status', text); } catch (e) { /* closed */ }
-  };
-  pushStatus();
+  const action = actions[res.response];
+  if (!action || action === 'close') return;
 
-  const onIpc = (_e, cmd, arg) => {
-    if (cmd === 'zcall-cfg-close') { try { win.destroy(); } catch (e) {} return; }
-    if (cmd === 'zcall-cfg-browse') {
-      dialogModule.showOpenDialog(win, { title: 'Chọn file wine', properties: ['openFile'] }).then((picked) => {
-        const chosen = picked.filePaths && picked.filePaths[0];
-        if (!chosen) return;
-        if (validateWine(chosen, prefix)) {
-          writeConfig(userDataDir, { wineSetup: 'ready', winePath: chosen });
-          process.env.ZCALL_WINE = chosen;
-          process.env.ZCALL_WINEPREFIX = prefix;
-          pushStatus();
-          new NotificationModule({ title: 'Zalo', body: 'Đã chọn wine: ' + chosen }).show();
-        } else {
-          dialogModule.showMessageBox(win, {
-            type: 'error', title: 'Zalo — Tính năng gọi điện',
-            message: 'Wine này không dùng được',
-            detail: 'File đã chọn không chạy được ứng dụng 32-bit:\n' + chosen
-          });
-        }
-      });
-      return;
-    }
-    if (cmd === 'zcall-cfg-setpath') {
-      const typed = String(arg || '').trim();
-      if (!typed) {
-        dialogModule.showMessageBox(win, {
-          type: 'info', title: 'Zalo — Tính năng gọi điện',
-          message: 'Chưa nhập đường dẫn',
-          detail: 'Hãy nhập đường dẫn đầy đủ tới file wine, ví dụ /usr/bin/wine'
-        });
-        return;
-      }
-      if (!fs.existsSync(typed)) {
-        dialogModule.showMessageBox(win, {
-          type: 'error', title: 'Zalo — Tính năng gọi điện',
-          message: 'Không tìm thấy file',
-          detail: 'Đường dẫn không tồn tại:\n' + typed
-        });
-        return;
-      }
-      if (!validateWine(typed, prefix)) {
-        dialogModule.showMessageBox(win, {
-          type: 'error', title: 'Zalo — Tính năng gọi điện',
-          message: 'Wine này không dùng được',
-          detail: 'File không chạy được ứng dụng 32-bit hoặc không phải wine hợp lệ:\n' + typed
-        });
-        return;
-      }
-      writeConfig(userDataDir, { wineSetup: 'ready', winePath: typed });
-      process.env.ZCALL_WINE = typed;
+  if (action === 'browse') {
+    const picked = await dialogModule.showOpenDialog(parent, {
+      title: 'Chọn binary Wine (ví dụ /usr/bin/wine)',
+      properties: ['openFile']
+    });
+    const chosen = picked.filePaths && picked.filePaths[0];
+    if (!chosen) return;
+    if (validateWine(chosen, prefix)) {
+      writeConfig(userDataDir, { wineSetup: 'ready', winePath: chosen });
+      process.env.ZCALL_WINE = chosen;
       process.env.ZCALL_WINEPREFIX = prefix;
-      pushStatus();
-      dialogModule.showMessageBox(win, {
-        type: 'info', title: 'Zalo — Tính năng gọi điện',
-        message: 'Đã lưu đường dẫn wine',
-        detail: typed + '\n\nLần mở app sau sẽ dùng wine này (có thể bỏ bằng nút "Bỏ lựa chọn wine đã lưu").'
+      if (NotificationModule && NotificationModule.isSupported()) {
+        new NotificationModule({ title: 'Zalo', body: 'Đã chọn Wine: ' + chosen }).show();
+      }
+      await dialogModule.showMessageBox(parent, {
+        type: 'info',
+        title: 'Zalo — Cài đặt gọi điện',
+        message: 'Đã lưu cấu hình Wine',
+        detail: `Đã chọn: ${chosen}\nTính năng gọi điện đã sẵn sàng.`
       });
-      return;
+    } else {
+      await dialogModule.showMessageBox(parent, {
+        type: 'error',
+        title: 'Zalo — Cài đặt gọi điện',
+        message: 'Wine không tương thích',
+        detail: `File đã chọn không chạy được ứng dụng 32-bit:\n${chosen}`
+      });
     }
-    if (cmd === 'zcall-cfg-download') {
-      win.destroy();
-      promptAndInstall(userDataDir);
-      return;
-    }
-    if (cmd === 'zcall-cfg-clear') {
-      const cfg = readConfig(userDataDir);
-      if (cfg.winePath) {
-        delete cfg.winePath;
-        writeConfig(userDataDir, cfg);
-        pushStatus();
-        dialogModule.showMessageBox(win, {
-          type: 'info', title: 'Zalo — Tính năng gọi điện',
-          message: 'Đã bỏ lựa chọn wine đã lưu',
-          detail: 'Lần mở app sau sẽ tự dò wine lại (wine tải về → wine hệ thống).\nWine đang dùng phiên này: ' + (process.env.ZCALL_WINE || '(không có)')
+    return;
+  }
+
+  if (action === 'download') {
+    promptAndInstall(userDataDir, false);
+    return;
+  }
+
+  if (action === 'remove_downloaded') {
+    const confirm = await dialogModule.showMessageBox(parent, {
+      type: 'warning',
+      title: 'Zalo — Cài đặt gọi điện',
+      message: 'Xác nhận xóa Wine đã tải về?',
+      detail: 'Thư mục zcall-wine-runtime sẽ bị xóa khỏi dữ liệu người dùng.',
+      buttons: ['Xóa', 'Hủy'],
+      defaultId: 0,
+      cancelId: 1
+    });
+    if (confirm.response === 0) {
+      try {
+        const runtime = path.join(userDataDir, RUNTIME_DIRNAME);
+        fs.rmSync(runtime, { recursive: true, force: true });
+        const newCfg = readConfig(userDataDir);
+        delete newCfg.winePath;
+        writeConfig(userDataDir, newCfg);
+        delete process.env.ZCALL_WINE;
+        await dialogModule.showMessageBox(parent, {
+          type: 'info',
+          title: 'Zalo — Cài đặt gọi điện',
+          message: 'Đã xóa Wine đã tải về',
+          detail: 'Bạn có thể tải lại hoặc cài Wine hệ thống (' + getDistroWineCommand() + ').'
         });
-      } else {
-        dialogModule.showMessageBox(win, {
-          type: 'info', title: 'Zalo — Tính năng gọi điện',
-          message: 'Không có lựa chọn wine nào đang lưu',
-          detail: 'App đang dùng wine theo chế độ tự dò. Không có gì để bỏ.'
+      } catch (e) {
+        await dialogModule.showMessageBox(parent, {
+          type: 'error',
+          title: 'Zalo — Cài đặt gọi điện',
+          message: 'Lỗi khi xóa',
+          detail: e.message || String(e)
         });
       }
-      return;
     }
-    if (cmd === 'zcall-cfg-remove') {
-      const runtime = path.join(userDataDir, RUNTIME_DIRNAME);
-      if (!fs.existsSync(runtime)) {
-        dialogModule.showMessageBox(win, {
-          type: 'info', title: 'Zalo — Tính năng gọi điện',
-          message: 'Không có wine đã tải về',
-          detail: 'Chưa có thư mục wine tải về trên máy này.'
-        });
-        return;
-      }
-      dialogModule.showMessageBox(win, {
-        type: 'warning', buttons: ['Xóa', 'Hủy'], defaultId: 1, cancelId: 1,
-        title: 'Zalo — Tính năng gọi điện',
-        message: 'Xóa wine đã tải về?',
-        detail: 'Sẽ xóa thư mục ' + runtime + '\nBạn có thể tải lại bất cứ lúc nào.'
-      }).then(({ response }) => {
-        if (response === 0) {
-          try { fs.rmSync(runtime, { recursive: true, force: true }); } catch (e) {}
-          const cfg = readConfig(userDataDir);
-          delete cfg.winePath;
-          writeConfig(userDataDir, cfg);
-          pushStatus();
-          dialogModule.showMessageBox(win, {
-            type: 'info', title: 'Zalo — Tính năng gọi điện',
-            message: 'Đã xóa wine đã tải về',
-            detail: 'Thư mục đã bị xóa. Lần mở app sau sẽ hỏi lại hoặc tự dò wine hệ thống.'
-          });
-        }
-      });
-      return;
-    }
-  };
-  const CFG_CHANNELS = ['zcall-cfg-browse', 'zcall-cfg-download', 'zcall-cfg-clear',
-                        'zcall-cfg-remove', 'zcall-cfg-close', 'zcall-cfg-setpath'];
-  for (const c of CFG_CHANNELS) ipcMain.on(c, onIpc);
-  win.on('closed', () => {
-    for (const c of CFG_CHANNELS) {
-      ipcMain.removeListener(c, onIpc);
-    }
-  });
+    return;
+  }
+
+  if (action === 'clear_saved') {
+    const newCfg = readConfig(userDataDir);
+    delete newCfg.winePath;
+    writeConfig(userDataDir, newCfg);
+    delete process.env.ZCALL_WINE;
+    await dialogModule.showMessageBox(parent, {
+      type: 'info',
+      title: 'Zalo — Cài đặt gọi điện',
+      message: 'Đã bỏ lưu đường dẫn Wine',
+      detail: 'Lần khởi động sau, Zalo sẽ tự động dò tìm Wine.'
+    });
+  }
 }
 
 function killProcessesByPattern(pattern) {

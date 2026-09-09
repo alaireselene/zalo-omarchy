@@ -23,10 +23,26 @@ const releaseBinary = path.join(buildDir, 'release');
 
 logger.dim(`Lib dir: ${libDir}`);
 logger.dim(`Electron: ${ELECTRON_VERSION}`);
+const os = require('os');
+const cargoBinDir = path.join(os.homedir(), '.cargo', 'bin');
+const env = { ...process.env };
+if (fs.existsSync(cargoBinDir) && (!env.PATH || !env.PATH.includes(cargoBinDir))) {
+  env.PATH = `${cargoBinDir}:${env.PATH || ''}`;
+}
+
+try {
+  execSync('command -v cargo', { env, stdio: 'ignore' });
+} catch (_) {
+  throw new Error(
+    'Rust toolchain (cargo) is required to build native addons.\n' +
+    'Please install Rust via official script: curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh\n' +
+    '(or via pacman: sudo pacman -S cargo)'
+  );
+}
 
 execSync(
   `cargo build --release`,
-  { cwd: libDir, stdio: 'ignore' }
+  { cwd: libDir, env, stdio: 'inherit' }
 );
 
 const files = fs.readdirSync(releaseBinary).filter(f => f.endsWith('.so'));

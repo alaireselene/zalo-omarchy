@@ -1,0 +1,155 @@
+# Maintainer: Zalo for Linux Contributors <https://github.com/doandat943/zalo-for-linux>
+
+pkgname=zalo-for-linux
+_pkgname=zalo
+pkgver=26.8.20
+pkgrel=1
+pkgdesc="Unofficial Zalo desktop client for Linux with ZaDark integration (built from source, optimized for Arch)"
+arch=('x86_64')
+url="https://github.com/doandat943/zalo-for-linux"
+license=('MIT')
+provides=('zalo' 'zalo-for-linux')
+conflicts=('zalo' 'zalo-for-linux' 'zalo-for-linux-bin' 'zalo-bin')
+
+depends=(
+    'alsa-lib'
+    'at-spi2-atk'
+    'atk'
+    'cairo'
+    'cups'
+    'glibc'
+    'gtk3'
+    'libdrm'
+    'libxcomposite'
+    'libxdamage'
+    'libxext'
+    'libxfixes'
+    'libxkbcommon'
+    'libxrandr'
+    'libxshmfence'
+    'mesa'
+    'nss'
+    'pango'
+    'zlib'
+)
+
+makedepends=(
+    'git'
+    'nodejs>=18'
+    'npm'
+    '7zip'
+    'gcc'
+    'gcc-libs'
+)
+
+optdepends=(
+    'mingw-w64-gcc: Build Windows call bridge during source build (voice/video calls)'
+    'wl-clipboard: Paste images from clipboard on Wayland'
+    'xclip: Paste images from clipboard on X11'
+    'lib32-glibc: 32-bit runtime for Wine voice/video calls'
+    'lib32-alsa-lib: 32-bit ALSA sound support for Wine calls'
+    'lib32-libpulse: 32-bit PulseAudio sound support for Wine calls'
+    'lib32-gstreamer: 32-bit GStreamer base for video calls'
+    'lib32-gst-plugins-base: 32-bit GStreamer base plugins for video calls'
+    'lib32-gst-plugins-good: 32-bit GStreamer good plugins for video calls'
+    'lib32-libv4l: 32-bit Video4Linux camera support'
+    'v4l-utils: Camera format adjustment utility (fix inverted/green camera)'
+    'xorg-server-xvfb: Headless X11 server for Wayland screen-sharing bridge'
+    'xdotool: Window geometry helper for Wayland screen sharing'
+    'python-dbus: Python D-Bus binding for XDG portal screen capture'
+    'gst-plugins-base: 64-bit GStreamer base plugins for screen bridge'
+    'gst-plugins-bad: 64-bit GStreamer bad plugins (pipewiresrc) for screen bridge'
+    'flameshot: Screenshot tool integration'
+    'spectacle: Screenshot tool integration (KDE Plasma)'
+    'gnome-screenshot: Screenshot tool integration (GNOME)'
+)
+
+install=zalo-for-linux.install
+options=(!strip !debug)
+
+source=(
+    "git+https://github.com/doandat943/zalo-for-linux.git#branch=main"
+    "zalo.desktop"
+    "zalo.sh"
+)
+
+sha256sums=(
+    'SKIP'
+    '0de845680ec7c8f608da346d9b1a00219f3912cb189190ec3c2c024ca63dcd17'
+    'b5036283f70c5e8e767acf03c2fca1abfee0b2abf4d51cd98e5b9a04de14ba85'
+)
+
+prepare() {
+    cd "${srcdir}/zalo-for-linux"
+    git submodule update --init --recursive
+
+    # Add ~/.cargo/bin to PATH for builders who installed Rust via rustup script
+    if [ -d "$HOME/.cargo/bin" ] && [[ ":$PATH:" != *":$HOME/.cargo/bin:"* ]]; then
+        export PATH="$HOME/.cargo/bin:$PATH"
+    fi
+
+    if ! command -v cargo >/dev/null 2>&1; then
+        echo "==> ERROR: Rust toolchain ('cargo') is required to build native addons." >&2
+        echo "    Install via official script: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh" >&2
+        echo "    Or via pacman: sudo pacman -S cargo" >&2
+        exit 1
+    fi
+}
+
+build() {
+    cd "${srcdir}/zalo-for-linux"
+
+    # Add ~/.cargo/bin to PATH if present
+    if [ -d "$HOME/.cargo/bin" ] && [[ ":$PATH:" != *":$HOME/.cargo/bin:"* ]]; then
+        export PATH="$HOME/.cargo/bin:$PATH"
+    fi
+
+    if ! command -v i686-w64-mingw32-gcc >/dev/null 2>&1; then
+        echo "==> NOTE: 'mingw-w64-gcc' not found. Voice/Video call bridge will be skipped."
+        echo "          To enable calling, install: sudo pacman -S mingw-w64-gcc"
+    fi
+
+    # 1. Install dependencies
+    npm ci --prefer-offline --no-audit
+
+    # 2. Extract macOS DMG, compile native C++ & Rust addons, apply Linux patches, integrate ZaDark
+    npm run main:setup
+
+    # 3. Build native Linux directory target (optimized native ELF binaries, no AppImage/FUSE wrapper)
+    npx electron-builder --linux dir
+}
+
+package() {
+    cd "${srcdir}/zalo-for-linux"
+
+    # Install application files to /opt/zalo-for-linux
+    install -dm755 "${pkgdir}/opt/zalo-for-linux"
+    cp -a dist/linux-unpacked/* "${pkgdir}/opt/zalo-for-linux/"
+
+    # Set proper permissions on binaries and SUID sandbox
+    chmod 755 "${pkgdir}/opt/zalo-for-linux/zalo"
+    if [ -f "${pkgdir}/opt/zalo-for-linux/chrome-sandbox" ]; then
+        # SUID sandbox must be mode 4755 for Chromium sandboxing
+        chmod 4755 "${pkgdir}/opt/zalo-for-linux/chrome-sandbox"
+    fi
+
+    # Install launcher wrapper to /usr/bin/zalo
+    install -Dm755 "${srcdir}/zalo.sh" "${pkgdir}/usr/bin/zalo"
+
+    # Install desktop entry
+    install -Dm644 "${srcdir}/zalo.desktop" "${pkgdir}/usr/share/applications/zalo.desktop"
+
+    # Install icons from app dist
+    if [ -f "${pkgdir}/opt/zalo-for-linux/resources/app/pc-dist/favicon-512x512.png" ]; then
+        install -Dm644 "${pkgdir}/opt/zalo-for-linux/resources/app/pc-dist/favicon-512x512.png" \
+            "${pkgdir}/usr/share/icons/hicolor/512x512/apps/zalo.png"
+        install -Dm644 "${pkgdir}/opt/zalo-for-linux/resources/app/pc-dist/favicon-512x512.png" \
+            "${pkgdir}/usr/share/pixmaps/zalo.png"
+    elif [ -f "app/pc-dist/favicon-512x512.png" ]; then
+        install -Dm644 "app/pc-dist/favicon-512x512.png" "${pkgdir}/usr/share/icons/hicolor/512x512/apps/zalo.png"
+        install -Dm644 "app/pc-dist/favicon-512x512.png" "${pkgdir}/usr/share/pixmaps/zalo.png"
+    fi
+
+    # Install License
+    install -Dm644 LICENSE "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+}

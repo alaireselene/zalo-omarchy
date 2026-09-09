@@ -1,136 +1,291 @@
-# Zalo for Linux 🐧
+# Zalo for Linux
 
 [![Build Status](https://github.com/doandat943/zalo-for-linux/actions/workflows/build.yml/badge.svg)](https://github.com/doandat943/zalo-for-linux/actions/workflows/build.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-An unofficial, community-driven port of the Zalo desktop application for **Linux only**, created by repackaging the official macOS client into a standard AppImage with integrated ZaDark.
+[English](#english) | [Tiếng Việt](#tiếng-việt)
 
-Thanks **realdtn2** for the solution: [realdtn2/zalo-linux-2026](https://github.com/realdtn2/zalo-linux-2026).
+---
 
-## ⚠️ Important: Known Issues
+<a name="english"></a>
+## English
 
-- **Can't make or receive calls:** The call module (`zcall`) only ships as a macOS native binary.
-- **System/Auto Theme not working:** The app does not follow the system's dark/light mode. Both ZaDark and Zalo ignore `prefers-color-scheme`. See [issue #22](https://github.com/doandat943/zalo-for-linux/issues/22).
-- **✅ Fixed: Message Synchronization (E2EE)** - Thanks to [@realdtn2](https://github.com/realdtn2) for reimplementing `db-cross-v4` with C++. E2EE message sync now works on Linux without any Wine workaround. Thanks to [@DMKha2k7](https://github.com/DMKha2k7) for the PR. See [PR #24](https://github.com/doandat943/zalo-for-linux/pull/24) and [issue #15](https://github.com/doandat943/zalo-for-linux/issues/15).
-- **✅ Fixed: No Photos/Videos, Files and Links on the Conversation Info panel** - Caused by the missing `db-cross-v4` module.
-- **✅ Fixed: Can't see message reactions** - Caused by the missing `db-cross-v4` module.
-- **✅ Fixed: Can't paste images from clipboard** - Image files (`.png`, `.jpg`, `.jpeg`, …) can now be pasted into chats via `Ctrl+V`. Works on Wayland (`wl-clipboard`) and X11 (`xclip`). Thanks to [@realdtn2](https://github.com/realdtn2) for the original solution and [@DMKha2k7](https://github.com/DMKha2k7) for the PR. See [PR #25](https://github.com/doandat943/zalo-for-linux/pull/25) and [issue #23](https://github.com/doandat943/zalo-for-linux/issues/23).
-- **✅ Fixed: Screenshot without/with Zalo window button** - Uses native Linux screenshot tools (see [issue #19](https://github.com/doandat943/zalo-for-linux/issues/19)). Supported tools: deepin-screen-recorder, spectacle, flameshot, gnome-screenshot, xfce4-screenshooter, mate-screenshot, ksnapshot, scrot. Thanks to [@hthienloc](https://github.com/hthienloc) for the solution.
-- **✅ Fixed: No title bar with minimize/maximize/close buttons** - Thanks to [@NanKillBro](https://github.com/NanKillBro) for the solution. For more details, see [issue #4](https://github.com/doandat943/zalo-for-linux/issues/4)
-- **✅ Fixed: No tray menu icon**
-- **✅ Fixed: Freeze on login screen** - Replaced macOS sqlite3 binaries with native Linux builds. See [issue #13](https://github.com/doandat943/zalo-for-linux/issues/13).
+An unofficial client for the Zalo desktop messaging application on Linux, built by adapting the official client into native Linux packages (Arch Linux `.pkg.tar.zst`) and portable AppImages with integrated ZaDark.
 
-This project is best suited for users who need a native-feeling Zalo client on Linux and are comfortable with the technical workarounds required for full functionality.
+### Feature Status
 
-## 🧩 Userscripts manager
+| Feature | Status | Notes |
+|---|---|---|
+| Text messaging & E2EE chat sync | Working | Native C++ `db-cross-v4` module handles backup and key decryption. |
+| Media, files & link history | Working | Fully functional via native database driver. |
+| Message reactions | Working | Fully functional. |
+| Audio & video calling | Working | Uses `zcall-bridge` via Wine named-pipe proxy (`ZaloCall.exe`). |
+| Screen sharing (X11) | Working | Native X11 capture. |
+| Screen sharing (Wayland) | Working | Via `screenbridge` (XDG desktop portal + Xvfb + `streamproxy.so`). |
+| Clipboard image paste (`Ctrl+V`) | Working | Wayland (`wl-clipboard`), X11 (`xclip`), or Electron fallback. |
+| Native window frame & title bar | Working | Standard minimize, maximize, and close buttons. |
+| System tray & unread badge | Working | Tray menu, unread counter badge on launcher dock. |
+| Dark mode (ZaDark) | Working | Integrated dark theme, custom fonts, blur, privacy mode. |
+| Userscripts manager | Working | Tampermonkey-compatible userscript support in Settings. |
+| Native screenshot integration | Working | Triggers Flameshot, Spectacle, Gnome-Screenshot, etc. |
+| Native file manager integration | Working | Opens files and folders in default Linux file manager. |
+| Auto-launch on boot | Working | Standard XDG autostart entry. |
+| SUID Sandbox (Chromium) | Working | `chrome-sandbox` configured with mode 4755; auto-fallback if userns disabled. |
+| In-app updates | Working | AppImage auto-updates in place; Arch package updates via `pacman`/AUR. |
+| Dynamic system theme follow | Not Working | Zalo and ZaDark do not track `prefers-color-scheme`; manual toggle only. |
+| Pure native Linux call engine | Limitation | VNG does not provide a Linux `ZaloCall` binary; Wine runtime is required. |
 
-Open **Settings → Userscripts manager** to create, paste, edit, import, delete,
-and enable or disable scripts that run inside Zalo. Tampermonkey-style metadata
-such as `@name`, `@description`, `@version`, `@match`, `@include`, and
-`@exclude` is recognized. Imported scripts may use the `.js` or `.user.js`
-extension.
+### Installation
 
-The compatibility layer currently provides `GM_info`, `GM_addStyle`,
-`GM_getValue`, `GM_setValue`, `GM_deleteValue`, `GM_listValues`, and
-`unsafeWindow`. Changes take effect the next time the Zalo page is loaded.
+#### Arch Linux (Native Package)
 
-> **Security:** Userscripts execute with access to the current Zalo page and
-> messages displayed in it. Only install scripts whose source you trust.
+This repository provides native Arch Linux packaging built directly from source (no AppImage extraction, no FUSE dependency at runtime).
 
-## 🌙 ZaDark Integration
-
-This project includes integrated [ZaDark](https://github.com/quaric/zadark), ZaDark is an extension that helps you enable Dark Mode, more privacy features, and additional functionality.
-
-**ZaDark helps you experience Zalo 🔒 more privately ✨ more personalized.**
-
-### Features
-
-- 🌙 **Dark Mode optimized specifically for Zalo** - Complete dark theme tailored for Zalo interface
-- 🆃 **Customize fonts and font sizes** - Personalize text appearance to your preference
-- 🖼️ **Custom chat backgrounds** - Set personalized backgrounds for conversations
-- 🔤 **Quick message translation** - Instantly translate messages to your preferred language
-- 😊 **Express emotions with 80+ Emojis** - Enhanced emoji reactions for messages
-- 🔒 **Anti-message peeking protection** - Prevent others from secretly viewing your messages
-- 👁️ **Hide status indicators** - Hide "typing", "delivered" and "read" status from others
-- 📱 **Native Integration** - Seamlessly integrated during build process
-
-> **Note:** ZaDark is licensed under MPL-2.0 and is developed by [Quaric](https://zadark.com). The setup process automatically prepares ZaDark, and build process integrates it seamlessly!
-
-## 🚀 Quick Start
-
-### Usage
-
-We strongly recommend using **Gear Lever** to integrate the AppImage perfectly into your system menu.
-
-**Note:** Zalo for Linux comes with a built-in updater. Whenever a new release is available, you will be prompted within the Zalo app to download and apply the update seamlessly without leaving the application.
-
-1.  Download the latest `.AppImage` file from the [**Releases**](https://github.com/doandat943/zalo-for-linux/releases) page.
-2.  Install **Gear Lever** from [Flathub](https://flathub.org/en/apps/it.mijorus.gearlever).
-3.  Open **Gear Lever**.
-4.  Click the **"Open"** button in the top-left corner and select the `.AppImage` file you downloaded.
-5.  The app will now appear in Gear Lever. Click the **"Unlock"** button, then choose **"Move to the app menu"** to integrate it into your system's application launcher.
-
-### Build from Source
-
-Prerequisites:
-
-- Linux x86_64
-- Node.js and npm
-- 7z (p7zip-full) for extracting the macOS app during setup
-- C++ build tools (for native addons): `build-essential`, `libssl-dev`, `liblzma-dev`
-
-On Debian/Ubuntu:
+##### 1. Build and install from source (`makepkg`)
 
 ```bash
-sudo apt-get update && sudo apt-get install -y p7zip-full build-essential libssl-dev liblzma-dev
+git clone https://github.com/doandat943/zalo-for-linux.git
+cd zalo-for-linux/packaging/arch
+makepkg -si
 ```
 
-Steps:
+Or run the bundled installer:
 
 ```bash
-# Clone the repository
+./packaging/arch/install.sh
+```
+
+##### 2. Build `.pkg.tar.zst` with Node
+
+```bash
+npm run main:setup
+npm run build:arch
+sudo pacman -U dist/zalo-for-linux-*.pkg.tar.zst
+```
+
+##### 3. AUR
+
+```bash
+yay -S zalo-for-linux
+# or
+paru -S zalo-for-linux
+```
+
+#### In-App Updates on Arch Linux
+
+When installed via pacman, the built-in update dialog detects Arch Linux and provides a 1-click update command (`yay -S zalo-for-linux` or `sudo pacman -Syu`) and terminal launcher instead of attempting an AppImage file replacement.
+
+#### AppImage
+
+Pre-built AppImages are available under [Releases](https://github.com/doandat943/zalo-for-linux/releases):
+
+- **Standard (`Zalo-...-ZaDark.AppImage`)**: Prompts to download portable Wine (~96MB) on first launch if calling dependencies are missing.
+- **Full (`Zalo-...-Full.AppImage`)**: Pre-bundles portable Wine runtime (~430MB); calling works immediately with zero extra downloads.
+
+Use [Gear Lever](https://github.com/mijorus/gearlever) for desktop integration:
+
+```bash
+flatpak run it.mijorus.gearlever --integrate Zalo-*.AppImage
+```
+
+### Call Dependencies (Arch Linux)
+
+For audio and video calls via `zcall-bridge`:
+
+```bash
+# Audio calls (speaker + microphone):
+sudo pacman -S --needed wine lib32-glibc lib32-libx11 lib32-libxext \
+  lib32-freetype2 lib32-mesa lib32-libpulse lib32-alsa-lib lib32-zlib
+
+# Video calls & webcam:
+sudo pacman -S --needed lib32-gstreamer lib32-gst-plugins-base \
+  lib32-gst-plugins-good lib32-libv4l v4l-utils
+
+# Recommended H.264 video decoding:
+sudo pacman -S --needed lib32-gst-libav
+
+# Wayland screen-sharing bridge:
+sudo pacman -S --needed xorg-server-xvfb xdotool python-dbus \
+  gst-plugins-base gst-plugins-bad
+```
+
+### Configuration & Flags
+
+Custom Electron flags can be configured in `~/.config/zalo-flags.conf` (or `/etc/zalo/flags.conf`):
+
+```ini
+# ~/.config/zalo-flags.conf
+--ozone-platform-hint=auto
+--enable-features=WaylandWindowDecorations
+--enable-wayland-ime
+```
+
+The launcher script automatically passes `--no-sandbox` if unprivileged user namespaces are disabled (`kernel.unprivileged_userns_clone = 0`) and the SUID sandbox is not configured, preventing crash-on-launch.
+
+### Building from Source (Generic Linux)
+
+Prerequisites:
+- Linux x86_64
+- Node.js >= 18 and npm
+- 7zip (`7z` from `7zip` package)
+- Rust toolchain (`cargo`, `rustc`): can be installed via the official script (`curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`) or `sudo pacman -S cargo`
+- C/C++ compiler (`gcc`, `g++`, `base-devel`)
+- MinGW GCC (`i686-w64-mingw32-gcc`): **optional**, only needed if compiling the Wine voice/video call bridge (`pipebridge.exe`)
+```bash
+# Clone repository and submodules
 git clone https://github.com/doandat943/zalo-for-linux.git
 cd zalo-for-linux
-# Then initialize or update submodules
 git submodule update --init --recursive
 
-# Run setup + build (downloads DMG, extracts, patches, packages)
+# Install dependencies and build
+npm ci
 npm run main
 ```
 
-The final AppImage will be in the `dist/` directory.
+Built packages are written to `dist/`.
 
-> For a detailed walkthrough of the build pipeline, scripts, environment
-> variables, and how to add new patches, see
-> [DEVELOPMENT.md](./DEVELOPMENT.md).
+---
 
-## ⚙️ How It Works
+<a name="tiếng-việt"></a>
+## Tiếng Việt
 
-This project is not a from-scratch rewrite of Zalo. It works by:
+Bản dựng không chính thức của ứng dụng Zalo trên hệ điều hành Linux, được đóng gói thành gói cài đặt gốc cho Arch Linux (`.pkg.tar.zst`) và bản portable AppImage tích hợp sẵn giao diện tối ZaDark.
 
-1.  Downloading the official macOS `.dmg` file.
-2.  Using `7z` to extract the `app.asar` archive, which contains the main application logic written in JavaScript.
-3.  Removing incompatible native macOS files.
-4.  Wrapping the extracted application in a minimal, Linux-compatible Electron shell.
-5.  Using `electron-builder` to package everything into a single, portable `AppImage` file.
+### Bảng trạng thái tính năng
 
-For a deeper dive into the build pipeline and patching strategy, see
-[ARCHITECTURE.md](./ARCHITECTURE.md).
+| Tính năng | Trạng thái | Ghi chú |
+|---|---|---|
+| Nhắn tin văn bản & đồng bộ E2EE | Hoạt động | Module C++ `db-cross-v4` giải mã dữ liệu mã hóa đầu cuối. |
+| Xem ảnh, video, file, link đã gửi | Hoạt động | Đầy đủ dữ liệu nhờ driver cơ sở dữ liệu native. |
+| Thả cảm xúc tin nhắn | Hoạt động | Đầy đủ. |
+| Gọi thoại & gọi video | Hoạt động | Dùng `zcall-bridge` qua Wine socket translation (`ZaloCall.exe`). |
+| Chia sẻ màn hình (X11) | Hoạt động | Chụp màn hình native qua X11. |
+| Chia sẻ màn hình (Wayland) | Hoạt động | Qua `screenbridge` (XDG portal + Xvfb + `streamproxy.so`). |
+| Dán ảnh từ clipboard (`Ctrl+V`) | Hoạt động | Hỗ trợ Wayland (`wl-clipboard`), X11 (`xclip`), hoặc Electron fallback. |
+| Khung cửa sổ & thanh tiêu đề | Hoạt động | Đầy đủ nút thu nhỏ, phóng to, đóng cửa sổ. |
+| Khay hệ thống & badge tin nhắn | Hoạt động | Menu khay hệ thống, đếm số tin chưa đọc trên thanh tác vụ. |
+| Giao diện tối (ZaDark) | Hoạt động | Dark mode tối ưu, tùy biến font chữ, làm mờ chống nhìn trộm. |
+| Trình quản lý Userscripts | Hoạt động | Hỗ trợ userscript chuẩn Tampermonkey trong phần Cài đặt. |
+| Công cụ chụp màn hình | Hoạt động | Gọi các công cụ Linux native: Flameshot, Spectacle, Gnome-Screenshot... |
+| Tích hợp trình quản lý tệp | Hoạt động | Mở tệp và thư mục đã tải trong trình quản lý tệp mặc định của hệ thống. |
+| Tự khởi động cùng hệ thống | Hoạt động | Đăng ký mục XDG autostart chuẩn. |
+| SUID Sandbox (Chromium) | Hoạt động | `chrome-sandbox` phân quyền mode 4755; tự fallback nếu userns bị tắt. |
+| Cập nhật trong ứng dụng | Hoạt động | AppImage cập nhật tự động; bản Arch cập nhật qua `pacman`/AUR. |
+| Tự động đổi giao diện theo hệ thống | Chưa hỗ trợ | Zalo và ZaDark chưa hỗ trợ `prefers-color-scheme`; cần chỉnh thủ công. |
+| Engine gọi thuần native Linux | Giới hạn | VNG chỉ phát hành `ZaloCall` cho Windows/macOS; bắt buộc dùng Wine. |
 
-For native addons (db-cross-v4, etc.), see
-[`nativelibs/README.md`](./nativelibs/README.md).
+### Cài đặt
 
-## 🐛 Troubleshooting & Debugging
+#### Arch Linux (Gói Native)
 
-If you encounter issues or want to inspect the app's behavior, you can easily open Chrome Developer Tools (DevTools) using the following methods:
-- **Keyboard Shortcut**: Press `Ctrl` + `Shift` + `I` while the Zalo window is focused.
-- **Tray Menu**: Right-click the Zalo tray icon and select **"Toggle DevTools"**.
+Dự án hỗ trợ đóng gói native cho Arch Linux từ mã nguồn (không chạy qua AppImage, không phụ thuộc FUSE khi chạy).
 
-## 📚 More Documentation
+##### 1. Build và cài đặt từ mã nguồn (`makepkg`)
 
-- [ARCHITECTURE.md](./ARCHITECTURE.md) — How the build pipeline and patches work
-- [DEVELOPMENT.md](./DEVELOPMENT.md) — Building from source, scripts, adding patches
-- [nativelibs/README.md](./nativelibs/README.md) — Native addons (db-cross-v4, etc.)
+```bash
+git clone https://github.com/doandat943/zalo-for-linux.git
+cd zalo-for-linux/packaging/arch
+makepkg -si
+```
 
-## 📄 License
+Hoặc dùng script cài nhanh:
 
-This project is licensed under the MIT License. Zalo is a trademark of VNG Corporation. This project is not affiliated with or endorsed by VNG Corporation.
+```bash
+./packaging/arch/install.sh
+```
+
+##### 2. Build gói `.pkg.tar.zst` bằng Node
+
+```bash
+npm run main:setup
+npm run build:arch
+sudo pacman -U dist/zalo-for-linux-*.pkg.tar.zst
+```
+
+##### 3. Cài qua AUR
+
+```bash
+yay -S zalo-for-linux
+# hoặc
+paru -S zalo-for-linux
+```
+
+#### Cập nhật ứng dụng trên Arch Linux
+
+Khi chạy bản cài qua pacman, cửa sổ kiểm tra cập nhật tích hợp sẽ nhận diện hệ thống Arch Linux và cung cấp lệnh cập nhật (`yay -S zalo-for-linux` hoặc `sudo pacman -Syu`) kèm chức năng sao chép và mở terminal tự động, không ghi đè file AppImage vào hệ thống.
+
+#### AppImage
+
+Tải bản phát hành sẵn tại mục [Releases](https://github.com/doandat943/zalo-for-linux/releases):
+
+- **Bản tiêu chuẩn (`Zalo-...-ZaDark.AppImage`)**: Dung lượng ~260MB. Lần đầu gọi điện sẽ hiện hộp thoại tải portable Wine (~96MB).
+- **Bản Full (`Zalo-...-Full.AppImage`)**: Dung lượng ~430MB. Đi kèm sẵn portable Wine bên trong, gọi điện được ngay không cần tải thêm.
+
+Khuyến nghị tích hợp vào hệ thống bằng [Gear Lever](https://github.com/mijorus/gearlever):
+
+```bash
+flatpak run it.mijorus.gearlever --integrate Zalo-*.AppImage
+```
+
+### Thư viện hỗ trợ cuộc gọi (Arch Linux)
+
+Cần thiết để tính năng gọi thoại và video qua `zcall-bridge` hoạt động ổn định:
+
+```bash
+# Gọi thoại (loa + mic):
+sudo pacman -S --needed wine lib32-glibc lib32-libx11 lib32-libxext \
+  lib32-freetype2 lib32-mesa lib32-libpulse lib32-alsa-lib lib32-zlib
+
+# Video call & camera:
+sudo pacman -S --needed lib32-gstreamer lib32-gst-plugins-base \
+  lib32-gst-plugins-good lib32-libv4l v4l-utils
+
+# Giải mã video H.264:
+sudo pacman -S --needed lib32-gst-libav
+
+# Chia sẻ màn hình trên Wayland:
+sudo pacman -S --needed xorg-server-xvfb xdotool python-dbus \
+  gst-plugins-base gst-plugins-bad
+```
+
+### Cấu hình cờ khởi chạy
+
+Có thể đặt các cờ Electron trong `~/.config/zalo-flags.conf` (hoặc `/etc/zalo/flags.conf`):
+
+```ini
+# ~/.config/zalo-flags.conf
+--ozone-platform-hint=auto
+--enable-features=WaylandWindowDecorations
+--enable-wayland-ime
+```
+
+Script khởi chạy tự động thêm `--no-sandbox` khi phát hiện kernel tắt user namespace (`kernel.unprivileged_userns_clone = 0`) và binary SUID sandbox không có quyền, tránh lỗi crash khi mở app.
+
+### Build từ mã nguồn (Linux chung)
+
+Yêu cầu:
+- Linux x86_64
+- Node.js >= 18 và npm
+- 7zip (`7z` từ gói `7zip`)
+- Rust toolchain (`cargo`, `rustc`): cài qua script chính thức (`curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`) hoặc qua pacman (`sudo pacman -S cargo`)
+- Trình biên dịch C/C++ (`gcc`, `g++`, `base-devel`)
+- MinGW GCC (`i686-w64-mingw32-gcc`): **tùy chọn**, chỉ cần khi muốn biên dịch cầu nối gọi điện Wine (`pipebridge.exe`)
+```bash
+git clone https://github.com/doandat943/zalo-for-linux.git
+cd zalo-for-linux
+git submodule update --init --recursive
+
+npm ci
+npm run main
+```
+
+File sau khi build nằm trong thư mục `dist/`.
+
+---
+
+## License & Acknowledgments
+
+- Licensed under the [MIT License](LICENSE).
+- Zalo is a trademark of VNG Corporation. This project is an independent community effort and is not affiliated with VNG Corporation.
+- Thanks to [realdtn2/zalo-linux-2026](https://github.com/realdtn2/zalo-linux-2026) for the initial packaging approach and native addon solutions.
+- ZaDark is developed by [Quaric](https://zadark.com) under MPL-2.0.

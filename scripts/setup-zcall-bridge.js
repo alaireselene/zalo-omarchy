@@ -163,11 +163,17 @@ async function main() {
       });
       logger.dim('streamproxy.so (32-bit) compiled from source');
     } catch (e) {
-      throw new Error(
-        '32-bit build toolchain is required for streamproxy.so — ' +
-        'install with: sudo apt install gcc-multilib libc6-dev-i386 libx11-dev:i386 libxcb1-dev:i386 libxext-dev:i386' +
-        ' (gcc said: ' + String(e.stderr || e.message).trim().slice(-300) + ')'
-      );
+      let idLike = '';
+      try {
+        const osRelease = fs.readFileSync('/etc/os-release', 'utf8');
+        const m = osRelease.match(/^ID(?:_LIKE)?=(.+)$/gm);
+        idLike = (m || []).join('\n').toLowerCase();
+      } catch (_) {}
+      const hint = (idLike.includes('arch') || fs.existsSync('/etc/arch-release'))
+        ? 'sudo pacman -S --needed lib32-glibc lib32-libx11 lib32-libxcb lib32-libxext'
+        : 'sudo apt install gcc-multilib libc6-dev-i386 libx11-dev:i386 libxcb1-dev:i386 libxext-dev:i386';
+      logger.warn('Could not compile streamproxy.so — Wayland screen sharing will be unavailable: ' + e.message);
+      logger.dim('To enable Wayland screen share bridge, install: ' + hint);
     }
   } else {
     logger.warn('streamproxy.c missing — share screen will not work on Wayland');

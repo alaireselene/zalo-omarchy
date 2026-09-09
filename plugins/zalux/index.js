@@ -153,6 +153,11 @@ function _openVersionWindow() {
       );
     }
   });
+  _ipcMain.removeAllListeners('zalux-start-pacman-update');
+  _ipcMain.on('zalux-start-pacman-update', () => {
+    updater.launchPacmanUpdate(versionWin);
+  });
+
 
   // Allow window to trigger a manual re-check
   _ipcMain.removeAllListeners('zalux-refresh');
@@ -170,12 +175,15 @@ function _openVersionWindow() {
 }
 
 function _sendVersionInfo(win, result) {
-  const { isAppImage, needsUpdate, buildInfo, remoteInfo, error } = result;
+  const { isAppImage, isPacman, pacmanCommand, needsUpdate, buildInfo, remoteInfo, error } = result;
   const iconPath = path.join(_appDir, 'pc-dist', 'favicon-512x512.png');
   const svgLogo  = path.join(_appDir, 'pc-dist', 'assets', 'logo-new.146dfa01c78183631d33b77999a18288.svg');
 
   win.webContents.send('version-info', {
     isAppImage,
+    isPacman: !!isPacman,
+    pacmanCommand: pacmanCommand || 'yay -S zalo-for-linux',
+    pacmanHelper: updater.detectPacmanHelper(),
     needsUpdate,
     error: error || null,
     localVersion:  buildInfo ? buildInfo.version       : null,
@@ -187,7 +195,6 @@ function _sendVersionInfo(win, result) {
     logoPath: 'file://' + (fs.existsSync(svgLogo) ? svgLogo : iconPath)
   });
 }
-
 // ---------------------------------------------------------------------------
 // Inject script loader
 // ---------------------------------------------------------------------------

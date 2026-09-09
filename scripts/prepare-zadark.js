@@ -7,14 +7,12 @@ const ZADARK_DIR = path.join(__dirname, '..', 'plugins', 'zadark');
 
 async function main() {
   try {
-    // Check if we should skip - no ZADARK_VERSION means we should skip
-    if (!process.env.ZADARK_VERSION) {
-      logger.info('ZaDark preparation skipped (no ZADARK_VERSION provided)');
-      return;
-    }
-    
     await ensureZaDarkSource();
-    await checkoutToTargetVersion();
+    if (process.env.ZADARK_VERSION) {
+      await checkoutToTargetVersion();
+    } else {
+      logger.info('Using submodule ZaDark version');
+    }
     await addRequiredExports();
     await buildZaDarkAssets();
 

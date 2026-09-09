@@ -294,7 +294,7 @@
   <div class="footer" id="footer" style="display:none;">
     <div class="notice" id="noticeNonAppImage">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7589A3" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-      Cập nhật chỉ khả dụng khi chạy từ AppImage
+      <span id="noticeText">Cập nhật chỉ khả dụng khi chạy từ AppImage</span>
     </div>
 
     <div class="progress-wrap" id="progressWrap">
@@ -315,9 +315,10 @@
 
     // ── State ──────────────────────────────────────────────────────────────
     let _isAppImage  = false;
+    let _isPacman    = false;
+    let _pacmanCommand = 'yay -S zalo-for-linux';
     let _needsUpdate = false;
     let _asset       = null;
-
     // ── Loading → Content transition ───────────────────────────────────────
     function showContent() {
       $('loadingState').style.display = 'none';
@@ -361,8 +362,10 @@
     ipcRenderer.on('version-checking', () => showLoading());
 
     ipcRenderer.on('version-info', (_e, info) => {
-      _isAppImage  = info.isAppImage;
-      _needsUpdate = info.needsUpdate;
+      _isAppImage     = info.isAppImage;
+      _isPacman       = info.isPacman;
+      _pacmanCommand  = info.pacmanCommand || 'yay -S zalo-for-linux';
+      _needsUpdate    = info.needsUpdate;
 
       // Logo
       if (info.logoPath) {
@@ -372,7 +375,11 @@
       }
 
       // Subtitle
-      if (!info.isAppImage) {
+      if (info.isPacman) {
+        $('subtitle').textContent = info.needsUpdate
+          ? 'Có bản cập nhật mới trên Arch Linux / AUR!'
+          : 'Bạn đang dùng phiên bản mới nhất (Arch Linux)';
+      } else if (!info.isAppImage) {
         $('subtitle').textContent = 'Đang chạy ở chế độ phát triển';
       } else if (info.needsUpdate) {
         $('subtitle').textContent = 'Có bản cập nhật mới!';
@@ -381,7 +388,6 @@
       } else {
         $('subtitle').textContent = 'Bạn đang dùng phiên bản mới nhất';
       }
-
       // Version rows
       const list = $('versionList');
       list.innerHTML = '';
@@ -404,14 +410,30 @@
         banner.style.display = 'none';
       }
 
-      // Non-AppImage notice
-      $('noticeNonAppImage').style.display = info.isAppImage ? 'none' : 'flex';
+      // Notice display
+      const noticeEl = $('noticeNonAppImage');
+      const noticeText = $('noticeText');
+      if (info.isPacman) {
+        noticeEl.style.display = info.needsUpdate ? 'flex' : 'none';
+        noticeText.textContent = `Chạy: ${info.pacmanCommand}`;
+      } else if (!info.isAppImage) {
+        noticeEl.style.display = 'flex';
+        noticeText.textContent = 'Đang chạy bản phát triển (không qua AppImage/Pacman)';
+      } else {
+        noticeEl.style.display = 'none';
+      }
 
       // Update button state
-      $('btnUpdate').disabled = !(info.isAppImage && info.needsUpdate);
-      $('btnUpdate').textContent = 'Cập nhật';
-
-      showContent();
+      if (info.isPacman && info.needsUpdate) {
+        $('btnUpdate').disabled = false;
+        $('btnUpdate').textContent = `Cập nhật (${info.pacmanHelper || 'Pacman'})`;
+      } else if (info.isAppImage && info.needsUpdate) {
+        $('btnUpdate').disabled = false;
+        $('btnUpdate').textContent = 'Cập nhật';
+      } else {
+        $('btnUpdate').disabled = true;
+        $('btnUpdate').textContent = 'Cập nhật';
+      }
     });
 
     // ── Buttons ────────────────────────────────────────────────────────────
@@ -421,11 +443,24 @@
     });
 
     $('btnUpdate').addEventListener('click', () => {
-      $('btnUpdate').disabled = true;
-      $('btnRefresh').disabled = true;
-      ipcRenderer.send('zalux-start-download');
+      if (_isPacman) {
+        ipcRenderer.send('zalux-start-pacman-update');
+        try {
+          navigator.clipboard.writeText(_pacmanCommand);
+          alert(`Lệnh cập nhật đã được sao chép vào clipboard:\n\n${_pacmanCommand}\n\nĐang mở cửa sổ terminal...`);
+        } catch (_) {}
+      } else {
+        $('btnUpdate').disabled = true;
+        $('btnRefresh').disabled = true;
+        ipcRenderer.send('zalux-start-download');
+      }
     });
 
+    ipcRenderer.on('pacman-update-info', (_e, data) => {
+      if (data && data.command) {
+        _pacmanCommand = data.command;
+      }
+    });
     // ── Download progress ──────────────────────────────────────────────────
     ipcRenderer.on('download-progress', (_e, percent) => {
       const wrap  = $('progressWrap');

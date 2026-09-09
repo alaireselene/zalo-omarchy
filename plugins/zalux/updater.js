@@ -45,6 +45,12 @@ function checkUpdates(callback) {
   const { app } = require('electron');
   const isAppImage = app.isPackaged && typeof process.env.APPIMAGE === 'string';
   const currentAppImagePath = isAppImage ? process.env.APPIMAGE : null;
+  const isPacman = !isAppImage && (
+    fs.existsSync('/etc/arch-release') ||
+    process.execPath.includes('/opt/zalo-for-linux') ||
+    process.execPath.includes('/usr/lib/zalo') ||
+    fs.existsSync('/usr/bin/zalo')
+  );
 
   // Always read local build info if available
   const buildInfoPath = path.join(_appDir, 'pc-dist', 'build-info.json');
@@ -55,6 +61,8 @@ function checkUpdates(callback) {
   const done = (overrides = {}) => {
     callback({
       isAppImage,
+      isPacman,
+      pacmanCommand: getPacmanUpdateCommand(),
       currentAppImagePath,
       buildInfo,
       needsUpdate: false,
@@ -65,9 +73,6 @@ function checkUpdates(callback) {
       ...overrides
     });
   };
-
-  // If not AppImage, we can still display version info but cannot update
-  if (!isAppImage) return done();
 
   if (!buildInfo) return done({ error: 'build-info.json not found' });
 
@@ -91,18 +96,28 @@ function checkUpdates(callback) {
             (isZaDark ? a.name.includes('+ZaDark') : !a.name.includes('+ZaDark'))
           );
 
-          if (!asset || !asset.browser_download_url) return done({ release });
+          if (!asset || !asset.browser_download_url) {
+            const remoteTag = release.tag_name ? release.tag_name.replace(/^v/, '') : null;
+            const needsUpdate = remoteTag && buildInfo && remoteTag !== buildInfo.version;
+            const remoteInfo = remoteTag ? { zaloVersion: remoteTag, commit: null, zadarkVersion: null } : null;
+            return done({ needsUpdate, remoteInfo, release, isPacman });
+          }
 
-          const remoteInfo = _parseAssetName(asset.name);
-          if (!remoteInfo || !remoteInfo.commit) return done({ release, asset });
+          const remoteInfo = _parseAssetName(asset.name) || (release.tag_name ? {
+            zaloVersion: release.tag_name.replace(/^v/, ''),
+            commit: null,
+            zadarkVersion: null
+          } : null);
 
+          const remoteTag = release.tag_name ? release.tag_name.replace(/^v/, '') : null;
           const needsUpdate =
-            remoteInfo.commit !== buildInfo.commit ||
-            remoteInfo.zaloVersion !== buildInfo.version ||
-            (buildInfo.zadarkVersion && remoteInfo.zadarkVersion &&
+            (remoteInfo && remoteInfo.commit && buildInfo.commit && remoteInfo.commit !== buildInfo.commit) ||
+            (remoteInfo && remoteInfo.zaloVersion && remoteInfo.zaloVersion !== buildInfo.version) ||
+            (remoteTag && remoteTag !== buildInfo.version) ||
+            (buildInfo.zadarkVersion && remoteInfo && remoteInfo.zadarkVersion &&
               remoteInfo.zadarkVersion !== buildInfo.zadarkVersion);
 
-          done({ needsUpdate, remoteInfo, release, asset });
+          done({ needsUpdate, remoteInfo, release, asset, isPacman });
         } catch (e) {
           console.error('[Zalux] Parse error:', e);
           done({ error: 'Lỗi phân tích phản hồi máy chủ' });
@@ -241,9 +256,64 @@ function _parseAssetName(name) {
   };
 }
 
+function detectPacmanHelper() {
+  const { execSync } = require('child_process');
+  for (const cmd of ['yay', 'paru', 'pacman']) {
+    try {
+      execSync(`command -v ${cmd}`, { stdio: 'ignore' });
+      return cmd;
+    } catch (_) {}
+  }
+  return 'pacman';
+}
+
+function getPacmanUpdateCommand() {
+  const helper = detectPacmanHelper();
+  if (helper === 'yay' || helper === 'paru') {
+    return `${helper} -S zalo-for-linux`;
+  }
+  return 'sudo pacman -Syu zalo-for-linux';
+}
+
+function launchPacmanUpdate(win) {
+  const { spawn, execSync } = require('child_process');
+  const updateCmd = getPacmanUpdateCommand();
+
+  const terminals = [
+    { bin: 'ghostty', args: ['-e', updateCmd] },
+    { bin: 'alacritty', args: ['-e', updateCmd] },
+    { bin: 'kitty', args: ['sh', '-c', `${updateCmd}; echo Press Enter to exit; read line`] },
+    { bin: 'foot', args: ['sh', '-c', `${updateCmd}; echo Press Enter to exit; read line`] },
+    { bin: 'konsole', args: ['-e', 'sh', '-c', `${updateCmd}; echo Press Enter to exit; read line`] },
+    { bin: 'gnome-terminal', args: ['--', 'sh', '-c', `${updateCmd}; echo Press Enter to exit; read line`] },
+    { bin: 'xfce4-terminal', args: ['-e', `sh -c "${updateCmd}; echo Press Enter to exit; read line"`] },
+    { bin: 'xterm', args: ['-e', `sh -c "${updateCmd}; echo Press Enter to exit; read line"`] }
+  ];
+
+  let launched = false;
+  for (const t of terminals) {
+    try {
+      execSync(`command -v ${t.bin}`, { stdio: 'ignore' });
+      spawn(t.bin, t.args, { detached: true, stdio: 'ignore' }).unref();
+      launched = true;
+      break;
+    } catch (_) {}
+  }
+
+  if (win && !win.isDestroyed()) {
+    win.webContents.send('pacman-update-info', {
+      command: updateCmd,
+      terminalLaunched: launched
+    });
+  }
+}
+
 module.exports = {
   init,
   checkUpdates,
   downloadAndSwap,
-  showBadge
+  showBadge,
+  detectPacmanHelper,
+  getPacmanUpdateCommand,
+  launchPacmanUpdate
 };
