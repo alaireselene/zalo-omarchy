@@ -143,14 +143,8 @@ Configure custom flags in `~/.config/zalo-flags.conf` (or `/etc/zalo/flags.conf`
 
 ---
 
-## Calling & Audio/Video Dependencies (Arch Linux — Wine WoW64)
-
-Arch Linux Wine 11 uses pure 64-bit new-style WoW64 (no multilib / lib32 packages required). Multimedia pipelines bridge directly to 64-bit GStreamer:
+## Call Dependencies (Voice & Video)
 
 ```bash
-# Complete audio & video calling support:
-sudo pacman -S --needed wine wine-mono gst-plugins-base gst-plugins-good gst-plugins-bad gst-libav
-
-# Wayland Screen Sharing bridge:
-sudo pacman -S --needed xorg-server-xvfb xdotool python-dbus
+sudo pacman -S --needed wine wine-mono gst-plugins-base gst-plugins-good gst-plugins-bad gst-libav xorg-server-xvfb xdotool python-dbus
 ```

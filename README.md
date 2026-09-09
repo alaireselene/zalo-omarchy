@@ -91,16 +91,10 @@ When installed via pacman, the built-in update dialog detects Arch Linux and pro
 
 ---
 
-### Call Dependencies (Arch Linux — Wine WoW64)
-
-Arch Linux Wine uses 64-bit new-style WoW64 (no 32-bit `lib32-*` packages required). Video and audio pipelines bridge directly to 64-bit GStreamer:
+### Call Dependencies (Voice & Video)
 
 ```bash
-# Complete audio & video calling support:
-sudo pacman -S --needed wine wine-mono gst-plugins-base gst-plugins-good gst-plugins-bad gst-libav
-
-# Wayland screen-sharing bridge:
-sudo pacman -S --needed xorg-server-xvfb xdotool python-dbus
+sudo pacman -S --needed wine wine-mono gst-plugins-base gst-plugins-good gst-plugins-bad gst-libav xorg-server-xvfb xdotool python-dbus
 ```
 
 ---
@@ -222,16 +216,10 @@ Khi chạy bản cài qua pacman, cửa sổ kiểm tra cập nhật tích hợp
 
 ---
 
-### Thư viện hỗ trợ cuộc gọi (Arch Linux — Wine WoW64)
-
-Wine trên Arch Linux sử dụng kiến trúc WoW64 64-bit mới (không cần cài các gói `lib32-*`). Wine tự động kết nối với GStreamer 64-bit của hệ thống:
+### Thư viện hỗ trợ cuộc gọi (Voice & Video)
 
 ```bash
-# Hỗ trợ đầy đủ gọi thoại & gọi video:
-sudo pacman -S --needed wine wine-mono gst-plugins-base gst-plugins-good gst-plugins-bad gst-libav
-
-# Chia sẻ màn hình trên Wayland:
-sudo pacman -S --needed xorg-server-xvfb xdotool python-dbus
+sudo pacman -S --needed wine wine-mono gst-plugins-base gst-plugins-good gst-plugins-bad gst-libav xorg-server-xvfb xdotool python-dbus
 ```
 
 ---
