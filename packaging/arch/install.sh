@@ -26,13 +26,12 @@ fi
 # Ask about Wine for voice/video calling
 if ! command -v wine >/dev/null 2>&1; then
     echo ""
-    echo "Voice & Video calls require Wine (with 32-bit audio libraries)."
-    echo "(Note: If you skip this, text messaging and E2EE chat work out of the box,"
-    echo " and Zalo will offer to download portable Wine in-app if you call later)."
+    echo "Voice & Video calls require Wine and GStreamer plugins."
+    echo "(Note: If you skip this, text messaging and E2EE chat work out of the box)."
     echo ""
-    read -rp "Do you want to install Wine via pacman now? [y/N] " install_wine
+    read -rp "Do you want to install Wine & GStreamer via pacman now? [y/N] " install_wine
     if [[ "$install_wine" =~ ^[Yy]$ ]]; then
-        sudo pacman -S --needed wine lib32-glibc lib32-alsa-lib lib32-libpulse
+        sudo pacman -S --needed wine wine-mono gst-plugins-base gst-plugins-good gst-plugins-bad gst-libav
     fi
     echo ""
 fi

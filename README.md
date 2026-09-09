@@ -91,25 +91,16 @@ When installed via pacman, the built-in update dialog detects Arch Linux and pro
 
 ---
 
-### Call Dependencies (Arch Linux)
+### Call Dependencies (Arch Linux — Wine WoW64)
 
-For audio and video calls via `zcall-bridge`:
+Arch Linux Wine uses 64-bit new-style WoW64 (no 32-bit `lib32-*` packages required). Video and audio pipelines bridge directly to 64-bit GStreamer:
 
 ```bash
-# Audio calls (speaker + microphone):
-sudo pacman -S --needed wine lib32-glibc lib32-libx11 lib32-libxext \
-  lib32-freetype2 lib32-mesa lib32-libpulse lib32-alsa-lib lib32-zlib
-
-# Video calls & webcam:
-sudo pacman -S --needed lib32-gstreamer lib32-gst-plugins-base \
-  lib32-gst-plugins-good lib32-libv4l v4l-utils
-
-# Recommended H.264 video decoding:
-sudo pacman -S --needed lib32-gst-libav
+# Complete audio & video calling support:
+sudo pacman -S --needed wine wine-mono gst-plugins-base gst-plugins-good gst-plugins-bad gst-libav
 
 # Wayland screen-sharing bridge:
-sudo pacman -S --needed xorg-server-xvfb xdotool python-dbus \
-  gst-plugins-base gst-plugins-bad
+sudo pacman -S --needed xorg-server-xvfb xdotool python-dbus
 ```
 
 ---
@@ -231,25 +222,16 @@ Khi chạy bản cài qua pacman, cửa sổ kiểm tra cập nhật tích hợp
 
 ---
 
-### Thư viện hỗ trợ cuộc gọi (Arch Linux)
+### Thư viện hỗ trợ cuộc gọi (Arch Linux — Wine WoW64)
 
-Cần thiết để tính năng gọi thoại và video qua `zcall-bridge` hoạt động ổn định:
+Wine trên Arch Linux sử dụng kiến trúc WoW64 64-bit mới (không cần cài các gói `lib32-*`). Wine tự động kết nối với GStreamer 64-bit của hệ thống:
 
 ```bash
-# Gọi thoại (loa + mic):
-sudo pacman -S --needed wine lib32-glibc lib32-libx11 lib32-libxext \
-  lib32-freetype2 lib32-mesa lib32-libpulse lib32-alsa-lib lib32-zlib
-
-# Video call & camera:
-sudo pacman -S --needed lib32-gstreamer lib32-gst-plugins-base \
-  lib32-gst-plugins-good lib32-libv4l v4l-utils
-
-# Giải mã video H.264:
-sudo pacman -S --needed lib32-gst-libav
+# Hỗ trợ đầy đủ gọi thoại & gọi video:
+sudo pacman -S --needed wine wine-mono gst-plugins-base gst-plugins-good gst-plugins-bad gst-libav
 
 # Chia sẻ màn hình trên Wayland:
-sudo pacman -S --needed xorg-server-xvfb xdotool python-dbus \
-  gst-plugins-base gst-plugins-bad
+sudo pacman -S --needed xorg-server-xvfb xdotool python-dbus
 ```
 
 ---

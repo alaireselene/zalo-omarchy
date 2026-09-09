@@ -2,9 +2,8 @@ post_install() {
     echo ""
     echo "==> Zalo for Linux installed successfully!"
     echo "    - Text messaging, photos, files, and E2EE sync work out of the box."
-    echo "    - Voice/Video calls require Wine:"
-    echo "        System Wine: sudo pacman -S wine lib32-glibc lib32-alsa-lib"
-    echo "        Or let Zalo download portable Wine automatically on first launch."
+    echo "    - Voice/Video calls require Wine & GStreamer:"
+    echo "        sudo pacman -S --needed wine wine-mono gst-plugins-base gst-plugins-good gst-plugins-bad gst-libav"
     echo "    - Custom flags (Wayland / scaling): ~/.config/zalo-flags.conf"
     echo ""
 }
