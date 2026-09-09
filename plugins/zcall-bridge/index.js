@@ -50,11 +50,23 @@ function wineEnv(extra = {}) {
     process.env,
     {
       WINEDEBUG: process.env.WINEDEBUG || '-all',
-      WINEDLLOVERRIDES: process.env.WINEDLLOVERRIDES || 'mscoree,mshtml='
+      WINEDLLOVERRIDES: process.env.WINEDLLOVERRIDES || 'mscoree,mshtml=;winedbg.exe=d'
     },
-    extra
   );
 }
+function disableWineCrashDialog(prefix) {
+  try {
+    const userReg = path.join(prefix, 'user.reg');
+    if (fs.existsSync(userReg)) {
+      let content = fs.readFileSync(userReg, 'utf8');
+      if (!content.includes('Software\\\\Wine\\\\WineDbg')) {
+        content += '\n[Software\\\\Wine\\\\WineDbg] 1725920000\n"ShowCrashDialog"=dword:00000000\n';
+        fs.writeFileSync(userReg, content, 'utf8');
+      }
+    }
+  } catch (_) {}
+}
+
 
 const WINE_DOWNLOAD_URL =
   'https://github.com/Kron4ek/Wine-Builds/releases/download/11.14/wine-11.14-amd64.tar.xz';
@@ -578,9 +590,12 @@ function launch({ userDataDir }) {
           stdio: 'ignore',
           timeout: 180000
         });
+        disableWineCrashDialog(prefix);
       } catch (e) {
         console.error('[zcall-bridge] wineboot failed:', e.message);
       }
+    } else {
+      disableWineCrashDialog(prefix);
     }
 
     // A wine is only usable if it can run 32-bit executables.
@@ -625,7 +640,8 @@ function launch({ userDataDir }) {
   process.env.ZCALL_WINE = wine;
   process.env.ZCALL_WINEPREFIX = prefix;
   if (!process.env.WINEDEBUG) process.env.WINEDEBUG = '-all';
-  if (!process.env.WINEDLLOVERRIDES) process.env.WINEDLLOVERRIDES = 'mscoree,mshtml=';
+  if (!process.env.WINEDLLOVERRIDES) process.env.WINEDLLOVERRIDES = 'mscoree,mshtml=;winedbg.exe=d';
+  disableWineCrashDialog(prefix);
 
   // Streamproxy: the capture shim is preloaded into the helper at ALL times.
   // It is inert while the bridge display is down (captures fall through to
