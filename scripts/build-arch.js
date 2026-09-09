@@ -220,6 +220,13 @@ async function main() {
     const sizeMb = (stats.size / 1024 / 1024).toFixed(2);
     logger.success(`Successfully built Arch package: ${pkgName} (${sizeMb} MB)`);
     logger.info(`Install with: sudo pacman -U dist/${pkgName}`);
+
+    if (process.env.GITHUB_OUTPUT) {
+      fs.appendFileSync(process.env.GITHUB_OUTPUT, `pkg_file=${pkgPath}\n`);
+      fs.appendFileSync(process.env.GITHUB_OUTPUT, `pkg_name=${pkgName}\n`);
+      fs.appendFileSync(process.env.GITHUB_OUTPUT, `zalo_version=${ZALO_VERSION}\n`);
+      fs.appendFileSync(process.env.GITHUB_OUTPUT, `build=true\n`);
+    }
   } catch (error) {
     logger.error('Arch build failed:', error.message);
     process.exit(1);

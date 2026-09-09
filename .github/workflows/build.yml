@@ -1,4 +1,4 @@
-name: Build Zalo for Linux
+name: Build Zalo for Arch Linux
 
 on:
   schedule:
@@ -80,48 +80,43 @@ jobs:
       run: |
         sudo dpkg --add-architecture i386
         sudo apt-get update
-        sudo apt-get install -y liblzma-dev p7zip-full gcc-mingw-w64-i686 gcc gcc-multilib libc6-dev-i386 libx11-dev libxcb1-dev libx11-dev:i386 libxcb1-dev:i386 libxext-dev:i386
+        sudo apt-get install -y liblzma-dev p7zip-full gcc-mingw-w64-i686 gcc gcc-multilib libc6-dev-i386 libx11-dev libxcb1-dev libx11-dev:i386 libxcb1-dev:i386 libxext-dev:i386 zstd libarchive-tools
 
-    - name: Setup and Build
-      id: build
+    - name: Setup App and Compile Native Addons
       env:
         ZALO_VERSION: ${{ github.event.inputs.zalo_version }}
         ZALO_WIN_VERSION: ${{ github.event.inputs.zalo_win_version }}
         ZADARK_VERSION: ${{ github.event.inputs.zadark_version }}
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         GITHUB_REPOSITORY: ${{ github.repository }}
-      run: npm run main
+      run: |
+        SETUP=true node scripts/main.js
+
+    - name: Build Native Arch Linux Package
+      id: build
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_REPOSITORY: ${{ github.repository }}
+      run: |
+        node scripts/build-arch.js
+        cd dist
+        sha256sum zalo-for-linux-*.pkg.tar.zst > sha256sums.txt
+        echo "commit_hash=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
         
-    - name: Upload Original AppImage artifact
+    - name: Upload Arch Linux Package Artifact
       if: steps.build.outputs.build == 'true'
       uses: actions/upload-artifact@v4
       with:
-        name: ${{ steps.build.outputs.original_appimage_name }}
-        path: ${{ steps.build.outputs.original_appimage_file }}
-        retention-days: 30
-        
-    - name: Upload ZaDark AppImage artifact
-      if: steps.build.outputs.build == 'true'
-      uses: actions/upload-artifact@v4
-      with:
-        name: ${{ steps.build.outputs.zadark_appimage_name }}
-        path: ${{ steps.build.outputs.zadark_appimage_file }}
+        name: ${{ steps.build.outputs.pkg_name }}
+        path: ${{ steps.build.outputs.pkg_file }}
         retention-days: 30
 
-    - name: Upload Full AppImage artifact (wine bundled, ZaDark)
+    - name: Upload Checksums Artifact
       if: steps.build.outputs.build == 'true'
       uses: actions/upload-artifact@v4
       with:
-        name: ${{ steps.build.outputs.full_appimage_name }}
-        path: ${{ steps.build.outputs.full_appimage_file }}
-        retention-days: 30
-
-    - name: Upload Full AppImage artifact (wine bundled, no ZaDark)
-      if: steps.build.outputs.build == 'true'
-      uses: actions/upload-artifact@v4
-      with:
-        name: ${{ steps.build.outputs.plainfull_appimage_name }}
-        path: ${{ steps.build.outputs.plainfull_appimage_file }}
+        name: sha256sums.txt
+        path: dist/sha256sums.txt
         retention-days: 30
 
     - name: Create Release
@@ -129,36 +124,40 @@ jobs:
       uses: softprops/action-gh-release@v1
       with:
         tag_name: ${{ steps.build.outputs.zalo_version }}
-        name: ${{ steps.build.outputs.zalo_version }}
+        name: Zalo for Linux v${{ steps.build.outputs.zalo_version }}
         body: |
-          ## 🚀 How to use
+          ## Arch Linux Installation
 
-          It is recommended to use [Gear Lever](https://github.com/mijorus/gearlever) to manage and integrate the AppImage.
-
+          ### 1. One-line install with pacman:
           ```bash
-          # Download the AppImage
-          wget https://github.com/${{ github.repository }}/releases/download/${{ steps.build.outputs.zalo_version }}/${{ steps.build.outputs.zadark_appimage_name }}
-
-          # Install with Gear Lever
-          flatpak run it.mijorus.gearlever --integrate ${{ steps.build.outputs.zadark_appimage_name }}
+          sudo pacman -U https://github.com/${{ github.repository }}/releases/download/${{ steps.build.outputs.zalo_version }}/${{ steps.build.outputs.pkg_name }}
           ```
 
-          > 🍷 **Full variants** (portable wine bundled inside — the call feature, voice/video/share screen, works right after the first launch with no download; larger files ~430MB):
-          > - `${{ steps.build.outputs.plainfull_appimage_name }}` (without ZaDark)
-          > - `${{ steps.build.outputs.full_appimage_name }}` (with ZaDark)
+          ### 2. Download and install manually:
+          ```bash
+          curl -L -O https://github.com/${{ github.repository }}/releases/download/${{ steps.build.outputs.zalo_version }}/${{ steps.build.outputs.pkg_name }}
+          sudo pacman -U ${{ steps.build.outputs.pkg_name }}
+          ```
 
-          ## 📋 System Requirements
-          - Linux x64
-          - GLIBC 2.28 or later
+          ### 3. Build from source via makepkg:
+          ```bash
+          git clone https://github.com/${{ github.repository }}.git
+          cd zalo-omarchy/packaging/arch
+          makepkg -si
+          ```
 
-          ## 🐛 Issues & Support
-          Please report issues in the [GitHub Issues](https://github.com/${{ github.repository }}/issues) section.
+          ---
 
+          ## Optional Dependencies (Voice & Video Calls)
+          ```bash
+          sudo pacman -S --needed wine lib32-glibc lib32-alsa-lib lib32-libpulse lib32-gstreamer
+          ```
+
+          ## SHA256 Checksums
+          See attached `sha256sums.txt`.
         files: |
-          ${{ steps.build.outputs.original_appimage_file }}
-          ${{ steps.build.outputs.zadark_appimage_file }}
-          ${{ steps.build.outputs.plainfull_appimage_file }}
-          ${{ steps.build.outputs.full_appimage_file }}
+          ${{ steps.build.outputs.pkg_file }}
+          dist/sha256sums.txt
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -167,7 +166,7 @@ jobs:
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         RELEASE_TAG: ${{ steps.build.outputs.zalo_version }}
-        CURRENT_COMMIT: ${{ env.COMMIT_HASH }}
+        CURRENT_COMMIT: ${{ steps.build.outputs.commit_hash }}
       run: |
         set -euo pipefail
 
@@ -181,8 +180,8 @@ jobs:
         fi
 
         for name in $asset_names; do
-          if [[ "$name" == Zalo-*.AppImage ]] && [[ "$name" != *"$CURRENT_COMMIT"* ]]; then
-            echo "Removing old asset: $name"
+          if [[ "$name" == *.AppImage ]]; then
+            echo "Removing old AppImage asset: $name"
             gh release delete-asset "$RELEASE_TAG" "$name" --yes
           fi
         done

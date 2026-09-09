@@ -1,6 +1,6 @@
-# Zalo for Linux
+# Zalo for Linux (Arch Linux Package)
 
-[![Build Status](https://github.com/doandat943/zalo-for-linux/actions/workflows/build.yml/badge.svg)](https://github.com/doandat943/zalo-for-linux/actions/workflows/build.yml)
+[![Build Status](https://github.com/alaireselene/zalo-omarchy/actions/workflows/build.yml/badge.svg)](https://github.com/alaireselene/zalo-omarchy/actions/workflows/build.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 [English](#english) | [Tiếng Việt](#tiếng-việt)
@@ -10,7 +10,7 @@
 <a name="english"></a>
 ## English
 
-An unofficial client for the Zalo desktop messaging application on Linux, built by adapting the official client into native Linux packages (Arch Linux `.pkg.tar.zst`) and portable AppImages with integrated ZaDark.
+An unofficial native Arch Linux package (`.pkg.tar.zst`) for the Zalo desktop messaging client, built from source with integrated ZaDark dark mode and Linux optimizations.
 
 ### Feature Status
 
@@ -31,21 +31,33 @@ An unofficial client for the Zalo desktop messaging application on Linux, built 
 | Native file manager integration | Working | Opens files and folders in default Linux file manager. |
 | Auto-launch on boot | Working | Standard XDG autostart entry. |
 | SUID Sandbox (Chromium) | Working | `chrome-sandbox` configured with mode 4755; auto-fallback if userns disabled. |
-| In-app updates | Working | AppImage auto-updates in place; Arch package updates via `pacman`/AUR. |
+| In-app updates | Working | Notifies when updates are available and launches `pacman` / `yay` / `paru`. |
 | Dynamic system theme follow | Not Working | Zalo and ZaDark do not track `prefers-color-scheme`; manual toggle only. |
 | Pure native Linux call engine | Limitation | VNG does not provide a Linux `ZaloCall` binary; Wine runtime is required. |
 
 ### Installation
 
-#### Arch Linux (Native Package)
+#### Method 1: Install from GitHub Releases (Recommended)
 
-This repository provides native Arch Linux packaging built directly from source (no AppImage extraction, no FUSE dependency at runtime).
+##### Direct install via pacman:
+```bash
+sudo pacman -U https://github.com/alaireselene/zalo-omarchy/releases/latest/download/zalo-for-linux-26.8.20-1-x86_64.pkg.tar.zst
+```
 
-##### 1. Build and install from source (`makepkg`)
+##### Or download latest release and install:
+```bash
+LATEST_URL=$(curl -s https://api.github.com/repos/alaireselene/zalo-omarchy/releases/latest | grep "browser_download_url.*pkg.tar.zst" | cut -d '"' -f 4)
+curl -L -o /tmp/zalo-for-linux.pkg.tar.zst "$LATEST_URL"
+sudo pacman -U /tmp/zalo-for-linux.pkg.tar.zst
+```
+
+---
+
+#### Method 2: Build from Source via `makepkg`
 
 ```bash
-git clone https://github.com/doandat943/zalo-for-linux.git
-cd zalo-for-linux/packaging/arch
+git clone https://github.com/alaireselene/zalo-omarchy.git
+cd zalo-omarchy/packaging/arch
 makepkg -si
 ```
 
@@ -55,38 +67,29 @@ Or run the bundled installer:
 ./packaging/arch/install.sh
 ```
 
-##### 2. Build `.pkg.tar.zst` with Node
+---
+
+#### Method 3: Build `.pkg.tar.zst` with Node
 
 ```bash
+# Setup dependencies and extract app
+npm ci
 npm run main:setup
+
+# Build native package
 npm run build:arch
+
+# Install generated package
 sudo pacman -U dist/zalo-for-linux-*.pkg.tar.zst
 ```
 
-##### 3. AUR
+---
 
-```bash
-yay -S zalo-for-linux
-# or
-paru -S zalo-for-linux
-```
+### In-App Updates via Pacman
 
-#### In-App Updates on Arch Linux
+When installed via pacman, the built-in update dialog detects Arch Linux and provides a 1-click update command (`yay -S zalo-for-linux` or `sudo pacman -Syu`) and terminal launcher.
 
-When installed via pacman, the built-in update dialog detects Arch Linux and provides a 1-click update command (`yay -S zalo-for-linux` or `sudo pacman -Syu`) and terminal launcher instead of attempting an AppImage file replacement.
-
-#### AppImage
-
-Pre-built AppImages are available under [Releases](https://github.com/doandat943/zalo-for-linux/releases):
-
-- **Standard (`Zalo-...-ZaDark.AppImage`)**: Prompts to download portable Wine (~96MB) on first launch if calling dependencies are missing.
-- **Full (`Zalo-...-Full.AppImage`)**: Pre-bundles portable Wine runtime (~430MB); calling works immediately with zero extra downloads.
-
-Use [Gear Lever](https://github.com/mijorus/gearlever) for desktop integration:
-
-```bash
-flatpak run it.mijorus.gearlever --integrate Zalo-*.AppImage
-```
+---
 
 ### Call Dependencies (Arch Linux)
 
@@ -109,6 +112,8 @@ sudo pacman -S --needed xorg-server-xvfb xdotool python-dbus \
   gst-plugins-base gst-plugins-bad
 ```
 
+---
+
 ### Configuration & Flags
 
 Custom Electron flags can be configured in `~/.config/zalo-flags.conf` (or `/etc/zalo/flags.conf`):
@@ -122,34 +127,35 @@ Custom Electron flags can be configured in `~/.config/zalo-flags.conf` (or `/etc
 
 The launcher script automatically passes `--no-sandbox` if unprivileged user namespaces are disabled (`kernel.unprivileged_userns_clone = 0`) and the SUID sandbox is not configured, preventing crash-on-launch.
 
-### Building from Source (Generic Linux)
+---
 
-Prerequisites:
+### Building from Source (Prerequisites)
+
 - Linux x86_64
 - Node.js >= 18 and npm
-- 7zip (`7z` from `7zip` package)
-- Rust toolchain (`cargo`, `rustc`): can be installed via the official script (`curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`) or `sudo pacman -S cargo`
-- C/C++ compiler (`gcc`, `g++`, `base-devel`)
+- 7zip (`sudo pacman -S 7zip`)
+- Base development tools (`sudo pacman -S base-devel`)
+- Rust toolchain (`cargo`, `rustc`): install via official script (`curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`) or `sudo pacman -S cargo`
 - MinGW GCC (`i686-w64-mingw32-gcc`): **optional**, only needed if compiling the Wine voice/video call bridge (`pipebridge.exe`)
+
 ```bash
-# Clone repository and submodules
-git clone https://github.com/doandat943/zalo-for-linux.git
-cd zalo-for-linux
+git clone https://github.com/alaireselene/zalo-omarchy.git
+cd zalo-omarchy
 git submodule update --init --recursive
 
-# Install dependencies and build
 npm ci
-npm run main
+npm run main:setup
+npm run build:arch
 ```
 
-Built packages are written to `dist/`.
+Built package is written to `dist/zalo-for-linux-<version>-1-x86_64.pkg.tar.zst`.
 
 ---
 
 <a name="tiếng-việt"></a>
 ## Tiếng Việt
 
-Bản dựng không chính thức của ứng dụng Zalo trên hệ điều hành Linux, được đóng gói thành gói cài đặt gốc cho Arch Linux (`.pkg.tar.zst`) và bản portable AppImage tích hợp sẵn giao diện tối ZaDark.
+Gói cài đặt gốc cho Arch Linux (`.pkg.tar.zst`) của ứng dụng Zalo, được build trực tiếp từ mã nguồn với giao diện tối ZaDark và các tinh chỉnh tối ưu cho hệ điều hành Linux.
 
 ### Bảng trạng thái tính năng
 
@@ -170,21 +176,33 @@ Bản dựng không chính thức của ứng dụng Zalo trên hệ điều hà
 | Tích hợp trình quản lý tệp | Hoạt động | Mở tệp và thư mục đã tải trong trình quản lý tệp mặc định của hệ thống. |
 | Tự khởi động cùng hệ thống | Hoạt động | Đăng ký mục XDG autostart chuẩn. |
 | SUID Sandbox (Chromium) | Hoạt động | `chrome-sandbox` phân quyền mode 4755; tự fallback nếu userns bị tắt. |
-| Cập nhật trong ứng dụng | Hoạt động | AppImage cập nhật tự động; bản Arch cập nhật qua `pacman`/AUR. |
+| Cập nhật trong ứng dụng | Hoạt động | Thông báo khi có bản mới và hỗ trợ cập nhật qua `pacman` / `yay` / `paru`. |
 | Tự động đổi giao diện theo hệ thống | Chưa hỗ trợ | Zalo và ZaDark chưa hỗ trợ `prefers-color-scheme`; cần chỉnh thủ công. |
 | Engine gọi thuần native Linux | Giới hạn | VNG chỉ phát hành `ZaloCall` cho Windows/macOS; bắt buộc dùng Wine. |
 
 ### Cài đặt
 
-#### Arch Linux (Gói Native)
+#### Cách 1: Cài đặt từ GitHub Releases (Khuyến nghị)
 
-Dự án hỗ trợ đóng gói native cho Arch Linux từ mã nguồn (không chạy qua AppImage, không phụ thuộc FUSE khi chạy).
+##### Cài trực tiếp qua pacman:
+```bash
+sudo pacman -U https://github.com/alaireselene/zalo-omarchy/releases/latest/download/zalo-for-linux-26.8.20-1-x86_64.pkg.tar.zst
+```
 
-##### 1. Build và cài đặt từ mã nguồn (`makepkg`)
+##### Hoặc tải về máy và cài đặt:
+```bash
+LATEST_URL=$(curl -s https://api.github.com/repos/alaireselene/zalo-omarchy/releases/latest | grep "browser_download_url.*pkg.tar.zst" | cut -d '"' -f 4)
+curl -L -o /tmp/zalo-for-linux.pkg.tar.zst "$LATEST_URL"
+sudo pacman -U /tmp/zalo-for-linux.pkg.tar.zst
+```
+
+---
+
+#### Cách 2: Build từ mã nguồn qua `makepkg`
 
 ```bash
-git clone https://github.com/doandat943/zalo-for-linux.git
-cd zalo-for-linux/packaging/arch
+git clone https://github.com/alaireselene/zalo-omarchy.git
+cd zalo-omarchy/packaging/arch
 makepkg -si
 ```
 
@@ -194,38 +212,24 @@ Hoặc dùng script cài nhanh:
 ./packaging/arch/install.sh
 ```
 
-##### 2. Build gói `.pkg.tar.zst` bằng Node
+---
+
+#### Cách 3: Build gói `.pkg.tar.zst` bằng Node
 
 ```bash
+npm ci
 npm run main:setup
 npm run build:arch
 sudo pacman -U dist/zalo-for-linux-*.pkg.tar.zst
 ```
 
-##### 3. Cài qua AUR
+---
 
-```bash
-yay -S zalo-for-linux
-# hoặc
-paru -S zalo-for-linux
-```
+### Cập nhật ứng dụng trên Arch Linux
 
-#### Cập nhật ứng dụng trên Arch Linux
+Khi chạy bản cài qua pacman, cửa sổ kiểm tra cập nhật tích hợp sẽ nhận diện hệ thống Arch Linux và cung cấp lệnh cập nhật (`yay -S zalo-for-linux` hoặc `sudo pacman -Syu`) kèm chức năng sao chép và mở terminal tự động.
 
-Khi chạy bản cài qua pacman, cửa sổ kiểm tra cập nhật tích hợp sẽ nhận diện hệ thống Arch Linux và cung cấp lệnh cập nhật (`yay -S zalo-for-linux` hoặc `sudo pacman -Syu`) kèm chức năng sao chép và mở terminal tự động, không ghi đè file AppImage vào hệ thống.
-
-#### AppImage
-
-Tải bản phát hành sẵn tại mục [Releases](https://github.com/doandat943/zalo-for-linux/releases):
-
-- **Bản tiêu chuẩn (`Zalo-...-ZaDark.AppImage`)**: Dung lượng ~260MB. Lần đầu gọi điện sẽ hiện hộp thoại tải portable Wine (~96MB).
-- **Bản Full (`Zalo-...-Full.AppImage`)**: Dung lượng ~430MB. Đi kèm sẵn portable Wine bên trong, gọi điện được ngay không cần tải thêm.
-
-Khuyến nghị tích hợp vào hệ thống bằng [Gear Lever](https://github.com/mijorus/gearlever):
-
-```bash
-flatpak run it.mijorus.gearlever --integrate Zalo-*.AppImage
-```
+---
 
 ### Thư viện hỗ trợ cuộc gọi (Arch Linux)
 
@@ -248,6 +252,8 @@ sudo pacman -S --needed xorg-server-xvfb xdotool python-dbus \
   gst-plugins-base gst-plugins-bad
 ```
 
+---
+
 ### Cấu hình cờ khởi chạy
 
 Có thể đặt các cờ Electron trong `~/.config/zalo-flags.conf` (hoặc `/etc/zalo/flags.conf`):
@@ -261,25 +267,28 @@ Có thể đặt các cờ Electron trong `~/.config/zalo-flags.conf` (hoặc `/
 
 Script khởi chạy tự động thêm `--no-sandbox` khi phát hiện kernel tắt user namespace (`kernel.unprivileged_userns_clone = 0`) và binary SUID sandbox không có quyền, tránh lỗi crash khi mở app.
 
-### Build từ mã nguồn (Linux chung)
+---
 
-Yêu cầu:
+### Build từ mã nguồn (Yêu cầu)
+
 - Linux x86_64
 - Node.js >= 18 và npm
-- 7zip (`7z` từ gói `7zip`)
-- Rust toolchain (`cargo`, `rustc`): cài qua script chính thức (`curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`) hoặc qua pacman (`sudo pacman -S cargo`)
-- Trình biên dịch C/C++ (`gcc`, `g++`, `base-devel`)
+- 7zip (`sudo pacman -S 7zip`)
+- Base development tools (`sudo pacman -S base-devel`)
+- Rust toolchain (`cargo`, `rustc`): cài qua script chính thức (`curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`) hoặc `sudo pacman -S cargo`
 - MinGW GCC (`i686-w64-mingw32-gcc`): **tùy chọn**, chỉ cần khi muốn biên dịch cầu nối gọi điện Wine (`pipebridge.exe`)
+
 ```bash
-git clone https://github.com/doandat943/zalo-for-linux.git
-cd zalo-for-linux
+git clone https://github.com/alaireselene/zalo-omarchy.git
+cd zalo-omarchy
 git submodule update --init --recursive
 
 npm ci
-npm run main
+npm run main:setup
+npm run build:arch
 ```
 
-File sau khi build nằm trong thư mục `dist/`.
+File gói hoàn chỉnh nằm tại `dist/zalo-for-linux-<version>-1-x86_64.pkg.tar.zst`.
 
 ---
 
@@ -287,5 +296,5 @@ File sau khi build nằm trong thư mục `dist/`.
 
 - Licensed under the [MIT License](LICENSE).
 - Zalo is a trademark of VNG Corporation. This project is an independent community effort and is not affiliated with VNG Corporation.
-- Thanks to [realdtn2/zalo-linux-2026](https://github.com/realdtn2/zalo-linux-2026) for the initial packaging approach and native addon solutions.
+- Thanks to [realdtn2/zalo-linux-2026](https://github.com/realdtn2/zalo-linux-2026) for the native addon solutions.
 - ZaDark is developed by [Quaric](https://zadark.com) under MPL-2.0.

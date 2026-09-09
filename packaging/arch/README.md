@@ -2,7 +2,7 @@
 
 Native Arch Linux package for **Zalo for Linux**, built directly from scratch and optimized for Arch Linux.
 
-Instead of running inside an AppImage through FUSE, this package compiles and packages native Linux binaries into `/opt/zalo-for-linux/` with:
+This package compiles and packages native Linux binaries into `/opt/zalo-for-linux/` with:
 - Full SUID Sandbox setup (`chrome-sandbox` mode `4755`)
 - Automatic sandbox fallback detection for custom/hardened kernels
 - Native `/usr/bin/zalo` launcher with `~/.config/zalo-flags.conf` support (Wayland, IME, GPU flags)
@@ -115,7 +115,7 @@ paru -S zalo-for-linux
 When running on Arch Linux, the built-in Zalux version window (`Ctrl+Shift+I` or sidebar icon):
 1. Detects your Arch Linux installation
 2. Compares your local version against the latest GitHub release
-3. When an update is available, displays **"Cập nhật (yay/pacman)"** instead of attempting an AppImage download
+3. When an update is available, displays **"Cập nhật (yay/pacman)"** and provides the command
 4. Copies the update command (`yay -S zalo-for-linux` or `sudo pacman -Syu`) to your clipboard and opens your terminal emulator
 
 ---
