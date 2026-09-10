@@ -158,7 +158,7 @@ async function main() {
   const proxySo = path.join(ROOT, 'zcall-bridge', 'streamproxy.so');
   if (fs.existsSync(proxySrc)) {
     try {
-      execSync(`gcc -m32 -shared -fPIC -O2 "${proxySrc}" -ldl -lX11 -lxcb -o "${proxySo}"`, {
+      execSync(`gcc -m32 -shared -fPIC -O2 -static-libgcc "${proxySrc}" -ldl -lX11 -lxcb -o "${proxySo}"`, {
         cwd: ROOT, stdio: 'pipe'
       });
       logger.dim('streamproxy.so (32-bit) compiled from source');
@@ -170,7 +170,7 @@ async function main() {
         idLike = (m || []).join('\n').toLowerCase();
       } catch (_) {}
       const hint = (idLike.includes('arch') || fs.existsSync('/etc/arch-release'))
-        ? 'sudo pacman -S --needed lib32-glibc lib32-libx11 lib32-libxcb lib32-libxext'
+        ? 'sudo pacman -S --needed lib32-glibc lib32-gcc-libs lib32-libx11 lib32-libxcb lib32-libxext'
         : 'sudo apt install gcc-multilib libc6-dev-i386 libx11-dev:i386 libxcb1-dev:i386 libxext-dev:i386';
       logger.warn('Could not compile streamproxy.so — Wayland screen sharing will be unavailable: ' + e.message);
       logger.dim('To enable Wayland screen share bridge, install: ' + hint);
