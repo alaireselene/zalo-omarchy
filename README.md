@@ -1,4 +1,4 @@
-# Zalo for Linux (Arch Linux Package)
+# Zalomarchy — Zalo client for Linux (Arch Linux Native Package)
 
 [![Build Status](https://github.com/alaireselene/zalo-omarchy/actions/workflows/build.yml/badge.svg)](https://github.com/alaireselene/zalo-omarchy/actions/workflows/build.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
@@ -10,7 +10,7 @@
 <a name="english"></a>
 ## English
 
-An unofficial native Arch Linux package (`.pkg.tar.zst`) for the Zalo desktop messaging client, built from source with integrated ZaDark dark mode and Linux optimizations.
+An unofficial native Arch Linux package (`.pkg.tar.zst`) for the **Zalo** desktop messaging client (branded **Zalomarchy**), built from source with integrated ZaDark dark mode, calling bridge, and Linux optimizations for Wayland, Hyprland, and Omarchy.
 
 ### Feature Status
 
@@ -27,7 +27,7 @@ An unofficial native Arch Linux package (`.pkg.tar.zst`) for the Zalo desktop me
 | System tray & unread badge | Working | Tray menu, unread counter badge on launcher dock. |
 | Dark mode (ZaDark) | Working | Integrated dark theme, custom fonts, blur, privacy mode. |
 | Userscripts manager | Working | Tampermonkey-compatible userscript support in Settings. |
-| Native screenshot integration | Working | Triggers Flameshot, Spectacle, Gnome-Screenshot, etc. |
+| Screenshot integration | Working | Triggers Omarchy native screenshot (`omarchy screenshot`). |
 | Native file manager integration | Working | Opens files and folders in default Linux file manager. |
 | Auto-launch on boot | Working | Standard XDG autostart entry. |
 | SUID Sandbox (Chromium) | Working | `chrome-sandbox` configured with mode 4755; auto-fallback if userns disabled. |
@@ -41,14 +41,14 @@ An unofficial native Arch Linux package (`.pkg.tar.zst`) for the Zalo desktop me
 
 ##### Direct install via pacman:
 ```bash
-sudo pacman -U https://github.com/alaireselene/zalo-omarchy/releases/latest/download/zalo-for-linux-26.8.20-1-x86_64.pkg.tar.zst
+sudo pacman -U https://github.com/alaireselene/zalo-omarchy/releases/latest/download/zalomarchy-26.8.20-1-x86_64.pkg.tar.zst
 ```
 
 ##### Or download latest release and install:
 ```bash
 LATEST_URL=$(curl -s https://api.github.com/repos/alaireselene/zalo-omarchy/releases/latest | grep "browser_download_url.*pkg.tar.zst" | cut -d '"' -f 4)
-curl -L -o /tmp/zalo-for-linux.pkg.tar.zst "$LATEST_URL"
-sudo pacman -U /tmp/zalo-for-linux.pkg.tar.zst
+curl -L -o /tmp/zalomarchy.pkg.tar.zst "$LATEST_URL"
+sudo pacman -U /tmp/zalomarchy.pkg.tar.zst
 ```
 
 ---
@@ -80,34 +80,31 @@ npm run main:setup
 npm run build:arch
 
 # Install generated package
-sudo pacman -U dist/zalo-for-linux-*.pkg.tar.zst
+sudo pacman -U dist/zalomarchy-*.pkg.tar.zst
 ```
 
 ---
 
 ### In-App Updates via Pacman
 
-When installed via pacman, the built-in update dialog detects Arch Linux and provides a 1-click update command (`yay -S zalo-for-linux` or `sudo pacman -Syu`) and terminal launcher.
+When installed via pacman, the built-in update dialog detects Arch Linux and provides an update command (`yay -S zalomarchy` or `sudo pacman -Syu`) and terminal launcher.
 
 ---
 
 ### Call Dependencies (Voice & Video)
 
-```bash
-sudo pacman -S --needed wine wine-mono gst-plugins-base gst-plugins-good gst-plugins-bad gst-libav xorg-server-xvfb xdotool python-dbus
-```
+Dependencies are automatically included in the package:
+`wine`, `gst-plugins-base`, `gst-plugins-good`, `gst-plugins-bad`, `gst-libav`, `xorg-server-xvfb`, `xdotool`, `python-dbus`, `wl-clipboard`.
 
 ---
 
-### Configuration & Flags
+### Configuration & Custom Flags
 
-Custom Electron flags can be configured in `~/.config/zalo-flags.conf` (or `/etc/zalo/flags.conf`):
+Custom Electron flags can be configured in `~/.config/zalomarchy/flags.conf` (or `~/.config/zalo-flags.conf`):
 
 ```ini
-# ~/.config/zalo-flags.conf
---ozone-platform-hint=auto
---enable-features=WaylandWindowDecorations
---enable-wayland-ime
+# ~/.config/zalomarchy/flags.conf
+# Optional custom flags
 ```
 
 The launcher script automatically passes `--no-sandbox` if unprivileged user namespaces are disabled (`kernel.unprivileged_userns_clone = 0`) and the SUID sandbox is not configured, preventing crash-on-launch.
@@ -133,14 +130,14 @@ npm run main:setup
 npm run build:arch
 ```
 
-Built package is written to `dist/zalo-for-linux-<version>-1-x86_64.pkg.tar.zst`.
+Built package is written to `dist/zalomarchy-<version>-1-x86_64.pkg.tar.zst`.
 
 ---
 
 <a name="tiếng-việt"></a>
 ## Tiếng Việt
 
-Gói cài đặt gốc cho Arch Linux (`.pkg.tar.zst`) của ứng dụng Zalo, được build trực tiếp từ mã nguồn với giao diện tối ZaDark và các tinh chỉnh tối ưu cho hệ điều hành Linux.
+Gói cài đặt gốc cho Arch Linux (`.pkg.tar.zst`) của ứng dụng **Zalo** (thương hiệu **Zalomarchy**), được build trực tiếp từ mã nguồn với giao diện tối ZaDark và các tinh chỉnh tối ưu cho hệ điều hành Linux (Wayland, Hyprland, Omarchy).
 
 ### Bảng trạng thái tính năng
 
@@ -157,7 +154,7 @@ Gói cài đặt gốc cho Arch Linux (`.pkg.tar.zst`) của ứng dụng Zalo, 
 | Khay hệ thống & badge tin nhắn | Hoạt động | Menu khay hệ thống, đếm số tin chưa đọc trên thanh tác vụ. |
 | Giao diện tối (ZaDark) | Hoạt động | Dark mode tối ưu, tùy biến font chữ, làm mờ chống nhìn trộm. |
 | Trình quản lý Userscripts | Hoạt động | Hỗ trợ userscript chuẩn Tampermonkey trong phần Cài đặt. |
-| Công cụ chụp màn hình | Hoạt động | Gọi các công cụ Linux native: Flameshot, Spectacle, Gnome-Screenshot... |
+| Công cụ chụp màn hình | Hoạt động | Gọi trực tiếp công cụ chụp màn hình native của Omarchy (`omarchy screenshot`). |
 | Tích hợp trình quản lý tệp | Hoạt động | Mở tệp và thư mục đã tải trong trình quản lý tệp mặc định của hệ thống. |
 | Tự khởi động cùng hệ thống | Hoạt động | Đăng ký mục XDG autostart chuẩn. |
 | SUID Sandbox (Chromium) | Hoạt động | `chrome-sandbox` phân quyền mode 4755; tự fallback nếu userns bị tắt. |
@@ -171,14 +168,14 @@ Gói cài đặt gốc cho Arch Linux (`.pkg.tar.zst`) của ứng dụng Zalo, 
 
 ##### Cài trực tiếp qua pacman:
 ```bash
-sudo pacman -U https://github.com/alaireselene/zalo-omarchy/releases/latest/download/zalo-for-linux-26.8.20-1-x86_64.pkg.tar.zst
+sudo pacman -U https://github.com/alaireselene/zalo-omarchy/releases/latest/download/zalomarchy-26.8.20-1-x86_64.pkg.tar.zst
 ```
 
 ##### Hoặc tải về máy và cài đặt:
 ```bash
 LATEST_URL=$(curl -s https://api.github.com/repos/alaireselene/zalo-omarchy/releases/latest | grep "browser_download_url.*pkg.tar.zst" | cut -d '"' -f 4)
-curl -L -o /tmp/zalo-for-linux.pkg.tar.zst "$LATEST_URL"
-sudo pacman -U /tmp/zalo-for-linux.pkg.tar.zst
+curl -L -o /tmp/zalomarchy.pkg.tar.zst "$LATEST_URL"
+sudo pacman -U /tmp/zalomarchy.pkg.tar.zst
 ```
 
 ---
@@ -205,37 +202,32 @@ Hoặc dùng script cài nhanh:
 npm ci
 npm run main:setup
 npm run build:arch
-sudo pacman -U dist/zalo-for-linux-*.pkg.tar.zst
+sudo pacman -U dist/zalomarchy-*.pkg.tar.zst
 ```
 
 ---
 
 ### Cập nhật ứng dụng trên Arch Linux
 
-Khi chạy bản cài qua pacman, cửa sổ kiểm tra cập nhật tích hợp sẽ nhận diện hệ thống Arch Linux và cung cấp lệnh cập nhật (`yay -S zalo-for-linux` hoặc `sudo pacman -Syu`) kèm chức năng sao chép và mở terminal tự động.
+Khi chạy bản cài qua pacman, thông báo cập nhật sẽ cung cấp lệnh cập nhật (`yay -S zalomarchy` hoặc `sudo pacman -Syu`).
 
 ---
 
 ### Thư viện hỗ trợ cuộc gọi (Voice & Video)
 
-```bash
-sudo pacman -S --needed wine wine-mono gst-plugins-base gst-plugins-good gst-plugins-bad gst-libav xorg-server-xvfb xdotool python-dbus
-```
+Gói Arch đã tích hợp sẵn đầy đủ các dependency bắt buộc:
+`wine`, `gst-plugins-base`, `gst-plugins-good`, `gst-plugins-bad`, `gst-libav`, `xorg-server-xvfb`, `xdotool`, `python-dbus`, `wl-clipboard`.
 
 ---
 
 ### Cấu hình cờ khởi chạy
 
-Có thể đặt các cờ Electron trong `~/.config/zalo-flags.conf` (hoặc `/etc/zalo/flags.conf`):
+Có thể đặt các cờ tùy chỉnh trong `~/.config/zalomarchy/flags.conf` (hoặc `~/.config/zalo-flags.conf`):
 
 ```ini
-# ~/.config/zalo-flags.conf
---ozone-platform-hint=auto
---enable-features=WaylandWindowDecorations
---enable-wayland-ime
+# ~/.config/zalomarchy/flags.conf
+# Cờ Electron tùy chọn
 ```
-
-Script khởi chạy tự động thêm `--no-sandbox` khi phát hiện kernel tắt user namespace (`kernel.unprivileged_userns_clone = 0`) và binary SUID sandbox không có quyền, tránh lỗi crash khi mở app.
 
 ---
 
@@ -245,7 +237,7 @@ Script khởi chạy tự động thêm `--no-sandbox` khi phát hiện kernel t
 - Node.js >= 18 và npm
 - 7zip (`sudo pacman -S 7zip`)
 - Base development tools (`sudo pacman -S base-devel`)
-- Rust toolchain (`cargo`, `rustc`): cài qua script chính thức (`curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`) hoặc `sudo pacman -S cargo`
+- Rust toolchain (`cargo`, `rustc`): cài qua script chính thức hoặc `sudo pacman -S cargo`
 - MinGW GCC (`i686-w64-mingw32-gcc`): **tùy chọn**, chỉ cần khi muốn biên dịch cầu nối gọi điện Wine (`pipebridge.exe`)
 
 ```bash
@@ -258,7 +250,7 @@ npm run main:setup
 npm run build:arch
 ```
 
-File gói hoàn chỉnh nằm tại `dist/zalo-for-linux-<version>-1-x86_64.pkg.tar.zst`.
+File gói hoàn chỉnh nằm tại `dist/zalomarchy-<version>-1-x86_64.pkg.tar.zst`.
 
 ---
 
