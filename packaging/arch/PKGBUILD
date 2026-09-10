@@ -1,14 +1,14 @@
-# Maintainer: Zalo for Linux Contributors <https://github.com/doandat943/zalo-for-linux>
+# Maintainer: Zalomarchy Contributors <https://github.com/alaireselene/zalo-omarchy>
 
-pkgname=zalo-for-linux
-_pkgname=zalo
+pkgname=zalomarchy
+_pkgname=zalomarchy
 pkgver=26.8.20
 pkgrel=1
-pkgdesc="Unofficial Zalo desktop client for Linux with ZaDark integration (built from source, optimized for Arch)"
+pkgdesc="Zalo desktop client optimized for Wayland, Hyprland, and Omarchy (native package, full feature call engine)"
 arch=('x86_64')
-url="https://github.com/doandat943/zalo-for-linux"
+url="https://github.com/alaireselene/zalo-omarchy"
 license=('MIT')
-provides=('zalo' 'zalo-for-linux')
+provides=('zalo' 'zalo-for-linux' 'zalo-bin' 'zalomarchy')
 conflicts=('zalo' 'zalo-for-linux' 'zalo-for-linux-bin' 'zalo-bin')
 
 depends=(
@@ -31,6 +31,16 @@ depends=(
     'nss'
     'pango'
     'zlib'
+    # Mandatory for 1-click just work (calling, media, Wayland clipboard & screen share)
+    'wine'
+    'gst-plugins-base'
+    'gst-plugins-good'
+    'gst-plugins-bad'
+    'gst-libav'
+    'xorg-server-xvfb'
+    'xdotool'
+    'python-dbus'
+    'wl-clipboard'
 )
 
 makedepends=(
@@ -42,42 +52,24 @@ makedepends=(
     'gcc-libs'
 )
 
-optdepends=(
-    'mingw-w64-gcc: Build Windows call bridge during source build (voice/video calls)'
-    'wl-clipboard: Paste images from clipboard on Wayland'
-    'xclip: Paste images from clipboard on X11'
-    'wine: Voice/Video call engine support (runs 32-bit ZaloCall via Wine WoW64)'
-    'wine-mono: Mono runtime for Wine'
-    'gst-plugins-base: GStreamer base plugins for video calling'
-    'gst-plugins-good: GStreamer good plugins (video decoders/sinks)'
-    'gst-plugins-bad: GStreamer bad plugins for video and Wayland screen capture'
-    'gst-libav: H.264 video codec decoding for video calls'
-    'v4l-utils: Camera format adjustment utility (fix inverted/green camera)'
-    'xorg-server-xvfb: Headless X11 server for Wayland screen-sharing bridge'
-    'xdotool: Window geometry helper for Wayland screen sharing'
-    'python-dbus: Python D-Bus binding for XDG portal screen capture'
-    'flameshot: Screenshot tool integration'
-    'spectacle: Screenshot tool integration (KDE Plasma)'
-    'gnome-screenshot: Screenshot tool integration (GNOME)'
-)
 
-install=zalo-for-linux.install
+install=zalomarchy.install
 options=(!strip !debug)
 
 source=(
-    "git+https://github.com/doandat943/zalo-for-linux.git#branch=main"
-    "zalo.desktop"
-    "zalo.sh"
+    "git+https://github.com/alaireselene/zalo-omarchy.git#branch=main"
+    "zalomarchy.desktop"
+    "zalomarchy.sh"
 )
 
 sha256sums=(
     'SKIP'
-    '0de845680ec7c8f608da346d9b1a00219f3912cb189190ec3c2c024ca63dcd17'
-    'b5036283f70c5e8e767acf03c2fca1abfee0b2abf4d51cd98e5b9a04de14ba85'
+    '830f857518636d376f0cfe5d6fe511e3a03fb0223e2807d152179245c554df3e'
+    '6df1317db1dcdadc1b0939cbf805fe826ac0c52ecea6ae33e54fe60259db4f33'
 )
 
 prepare() {
-    cd "${srcdir}/zalo-for-linux"
+    cd "${srcdir}/zalo-omarchy"
     git submodule update --init --recursive
 
     # Add ~/.cargo/bin to PATH for builders who installed Rust via rustup script
@@ -94,58 +86,50 @@ prepare() {
 }
 
 build() {
-    cd "${srcdir}/zalo-for-linux"
+    cd "${srcdir}/zalo-omarchy"
 
     # Add ~/.cargo/bin to PATH if present
     if [ -d "$HOME/.cargo/bin" ] && [[ ":$PATH:" != *":$HOME/.cargo/bin:"* ]]; then
         export PATH="$HOME/.cargo/bin:$PATH"
     fi
 
-    if ! command -v i686-w64-mingw32-gcc >/dev/null 2>&1; then
-        echo "==> NOTE: 'mingw-w64-gcc' not found. Voice/Video call bridge will be skipped."
-        echo "          To enable calling, install: sudo pacman -S mingw-w64-gcc"
-    fi
-
     # 1. Install dependencies
     npm ci --prefer-offline --no-audit
 
-    # 2. Extract macOS DMG, compile native C++ & Rust addons, apply Linux patches, integrate ZaDark
+    # 2. Extract macOS DMG, compile native C++ & Rust addons, setup call engine, apply patches
     npm run main:setup
 
-    # 3. Build native Linux directory target (optimized native ELF binaries, no AppImage/FUSE wrapper)
+    # 3. Build native Linux directory target (optimized native ELF binaries)
     npx electron-builder --linux dir
 }
 
 package() {
-    cd "${srcdir}/zalo-for-linux"
+    cd "${srcdir}/zalo-omarchy"
 
-    # Install application files to /opt/zalo-for-linux
-    install -dm755 "${pkgdir}/opt/zalo-for-linux"
-    cp -a dist/linux-unpacked/* "${pkgdir}/opt/zalo-for-linux/"
+    # Install application files to /opt/zalomarchy
+    install -dm755 "${pkgdir}/opt/zalomarchy"
+    cp -a dist/linux-unpacked/* "${pkgdir}/opt/zalomarchy/"
 
     # Set proper permissions on binaries and SUID sandbox
-    chmod 755 "${pkgdir}/opt/zalo-for-linux/zalo"
-    if [ -f "${pkgdir}/opt/zalo-for-linux/chrome-sandbox" ]; then
-        # SUID sandbox must be mode 4755 for Chromium sandboxing
-        chmod 4755 "${pkgdir}/opt/zalo-for-linux/chrome-sandbox"
+    chmod 755 "${pkgdir}/opt/zalomarchy/zalomarchy" 2>/dev/null || chmod 755 "${pkgdir}/opt/zalomarchy/zalo" 2>/dev/null || true
+    if [ -f "${pkgdir}/opt/zalomarchy/chrome-sandbox" ]; then
+        chmod 4755 "${pkgdir}/opt/zalomarchy/chrome-sandbox"
     fi
 
-    # Install launcher wrapper to /usr/bin/zalo
-    install -Dm755 "${srcdir}/zalo.sh" "${pkgdir}/usr/bin/zalo"
+    # Install launcher wrapper to /usr/bin/zalomarchy and symlink /usr/bin/zalo
+    install -Dm755 "${srcdir}/zalomarchy.sh" "${pkgdir}/usr/bin/zalomarchy"
+    ln -sf /usr/bin/zalomarchy "${pkgdir}/usr/bin/zalo"
 
     # Install desktop entry
-    install -Dm644 "${srcdir}/zalo.desktop" "${pkgdir}/usr/share/applications/zalo.desktop"
+    install -Dm644 "${srcdir}/zalomarchy.desktop" "${pkgdir}/usr/share/applications/zalomarchy.desktop"
 
-    # Install icons from app dist
-    if [ -f "${pkgdir}/opt/zalo-for-linux/resources/app/pc-dist/favicon-512x512.png" ]; then
-        install -Dm644 "${pkgdir}/opt/zalo-for-linux/resources/app/pc-dist/favicon-512x512.png" \
-            "${pkgdir}/usr/share/icons/hicolor/512x512/apps/zalo.png"
-        install -Dm644 "${pkgdir}/opt/zalo-for-linux/resources/app/pc-dist/favicon-512x512.png" \
-            "${pkgdir}/usr/share/pixmaps/zalo.png"
-    elif [ -f "app/pc-dist/favicon-512x512.png" ]; then
-        install -Dm644 "app/pc-dist/favicon-512x512.png" "${pkgdir}/usr/share/icons/hicolor/512x512/apps/zalo.png"
-        install -Dm644 "app/pc-dist/favicon-512x512.png" "${pkgdir}/usr/share/pixmaps/zalo.png"
-    fi
+    # Install icons for both zalomarchy and zalo
+    for icon_name in "zalomarchy.png" "zalo.png"; do
+        if [ -f "app/pc-dist/favicon-512x512.png" ]; then
+            install -Dm644 "app/pc-dist/favicon-512x512.png" "${pkgdir}/usr/share/icons/hicolor/512x512/apps/${icon_name}"
+            install -Dm644 "app/pc-dist/favicon-512x512.png" "${pkgdir}/usr/share/pixmaps/${icon_name}"
+        fi
+    done
 
     # Install License
     install -Dm644 LICENSE "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"

@@ -1,0 +1,12 @@
+post_install() {
+    echo ""
+    echo "==> Zalomarchy installed successfully!"
+    echo "    - Optimized for Wayland, Hyprland, and Omarchy."
+    echo "    - Launch command: zalomarchy (or zalo)"
+    echo "    - Custom flags: ~/.config/zalomarchy/flags.conf"
+    echo ""
+}
+
+post_upgrade() {
+    post_install
+}

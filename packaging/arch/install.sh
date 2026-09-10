@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # ==============================================================================
-#  Zalo for Linux - Arch Linux Quick Installer
+#  Zalomarchy - Arch Linux Quick Installer
 # ==============================================================================
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 echo "=========================================="
-echo "   Zalo for Linux - Arch Linux Installer"
+echo "   Zalomarchy - Arch Linux Installer"
 echo "=========================================="
 echo ""
 
@@ -23,20 +23,7 @@ if ! command -v makepkg >/dev/null 2>&1; then
     sudo pacman -S --needed base-devel
 fi
 
-# Ask about Wine for voice/video calling
-if ! command -v wine >/dev/null 2>&1; then
-    echo ""
-    echo "Voice & Video calls require Wine and GStreamer plugins."
-    echo "(Note: If you skip this, text messaging and E2EE chat work out of the box)."
-    echo ""
-    read -rp "Do you want to install Wine & GStreamer via pacman now? [y/N] " install_wine
-    if [[ "$install_wine" =~ ^[Yy]$ ]]; then
-        sudo pacman -S --needed wine wine-mono gst-plugins-base gst-plugins-good gst-plugins-bad gst-libav
-    fi
-    echo ""
-fi
-
-echo "Building and installing Zalo for Linux..."
+echo "Building and installing Zalomarchy..."
 echo "Source: ${SCRIPT_DIR}/PKGBUILD"
 echo ""
 
@@ -47,15 +34,12 @@ makepkg -sic --noconfirm "$@"
 
 echo ""
 echo "=========================================="
-echo "   Zalo for Linux installed successfully!"
+echo "   Zalomarchy installed successfully!"
 echo "=========================================="
 echo ""
-echo "Launch Zalo from your application menu or run:"
-echo "   $ zalo"
+echo "Launch Zalomarchy from your application menu or run:"
+echo "   $ zalomarchy (or zalo)"
 echo ""
 echo "Optional Features & Settings:"
-echo "   - Wayland / Custom flags: ~/.config/zalo-flags.conf"
-echo "     Example for native Wayland: echo '--ozone-platform-hint=auto' >> ~/.config/zalo-flags.conf"
-echo "   - Clipboard image paste: sudo pacman -S wl-clipboard (Wayland) or xclip (X11)"
-echo "   - Wayland screen share bridge: sudo pacman -S xorg-server-xvfb xdotool python-dbus gst-plugins-base gst-plugins-bad"
+echo "   - Custom flags: ~/.config/zalomarchy/flags.conf"
 echo ""

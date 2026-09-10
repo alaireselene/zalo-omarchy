@@ -1,7 +1,7 @@
 {
-  "name": "zalo-for-linux",
+  "name": "zalomarchy",
   "version": "1.0.0",
-  "description": "Unofficial Zalo port for Linux with ZaDark integration",
+  "description": "Zalo client optimized for Wayland, Hyprland, and Omarchy with ZaDark integration",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
@@ -26,13 +26,13 @@
   ],
   "author": "doandat943",
   "license": "MIT",
-  "homepage": "https://github.com/doandat943/zalo-for-linux",
+  "homepage": "https://github.com/alaireselene/zalo-omarchy",
   "repository": {
     "type": "git",
-    "url": "https://github.com/doandat943/zalo-for-linux.git"
+    "url": "https://github.com/alaireselene/zalo-omarchy.git"
   },
   "bugs": {
-    "url": "https://github.com/doandat943/zalo-for-linux/issues"
+    "url": "https://github.com/alaireselene/zalo-omarchy/issues"
   },
   "devDependencies": {
     "@electron/asar": "^4.0.1",
@@ -42,8 +42,8 @@
     "sqlite3": "^6.0.1"
   },
   "build": {
-    "appId": "com.zalo.linux",
-    "productName": "Zalo",
+    "appId": "org.omarchy.zalomarchy",
+    "productName": "Zalomarchy",
     "directories": {
       "output": "dist"
     },
@@ -75,16 +75,16 @@
     "nodeGypRebuild": false,
     "npmRebuild": false,
     "linux": {
-      "executableName": "zalo",
-      "target": "AppImage",
+      "executableName": "zalomarchy",
+      "target": "dir",
       "category": "Network",
       "desktop": {
         "entry": {
           "StartupWMClass": "zalo"
         }
       },
-      "synopsis": "Zalo messaging app for Linux",
-      "description": "Unofficial port of Zalo messaging application for Linux systems.",
+      "synopsis": "Zalo client optimized for Wayland, Hyprland, and Omarchy",
+      "description": "Zalo desktop messaging client with ZaDark integration, optimized for Wayland, Hyprland, and Omarchy.",
       "icon": "app/pc-dist/favicon-512x512.png"
     }
   },

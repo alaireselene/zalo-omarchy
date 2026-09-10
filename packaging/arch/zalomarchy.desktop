@@ -1,0 +1,20 @@
+[Desktop Entry]
+Name=Zalo
+GenericName=Messaging App
+GenericName[vi]=Ứng dụng nhắn tin Zalo
+Comment=Zalo desktop client optimized for Wayland, Hyprland, and Omarchy
+Comment[vi]=Ứng dụng Zalo cho Linux tối ưu cho Wayland, Hyprland và Omarchy
+Exec=zalomarchy %U
+Icon=zalomarchy
+Type=Application
+Terminal=false
+StartupWMClass=zalo
+Categories=Network;InstantMessaging;Chat;
+MimeType=x-scheme-handler/zalo;x-scheme-handler/zalomarchy;
+Keywords=zalo;zalomarchy;omarchy;hyprland;wayland;chat;im;messaging;zadark;
+Actions=NewWindow;
+
+[Desktop Action NewWindow]
+Name=New Window
+Name[vi]=Cửa sổ mới
+Exec=zalomarchy
