@@ -1,26 +1,13 @@
 /**
  * plugins/screenshot/index.js
  *
- * Screenshot plugin - intercepts Zalo's screenshot IPC calls and
- * delegates to native Linux screenshot tools.
+ * Screenshot plugin for Zalomarchy.
+ * Delegates exclusively to Omarchy's native screenshot engine (omarchy screenshot).
  */
 
 'use strict';
 
-const { exec, execSync } = require('child_process');
-
-// Screenshot tools (in priority order)
-const SCREENSHOT_TOOLS = [
-  { name: 'cosmic-screenshot',      cmd: 'cosmic-screenshot' },
-  { name: 'deepin-screen-recorder', cmd: 'deepin-screen-recorder' },
-  { name: 'spectacle',              cmd: 'spectacle -rbcn' },
-  { name: 'flameshot',              cmd: 'flameshot gui' },
-  { name: 'gnome-screenshot',       cmd: 'gnome-screenshot -ac' },
-  { name: 'xfce4-screenshooter',    cmd: 'xfce4-screenshooter -rc' },
-  { name: 'mate-screenshot',        cmd: 'mate-screenshot -i' },
-  { name: 'ksnapshot',              cmd: 'ksnapshot' },
-  { name: 'scrot',                  cmd: 'scrot' }
-];
+const { exec } = require('child_process');
 
 let _mainWindow = null;
 let _ipcMain    = null;
@@ -67,19 +54,16 @@ function register({ ipcMain }) {
 
 function _triggerScreenshot() {
   return new Promise((resolve) => {
-    for (const tool of SCREENSHOT_TOOLS) {
-      try {
-        execSync(`which ${tool.name}`, { stdio: 'ignore' });
-        console.log(`[Screenshot Plugin] Using ${tool.name}`);
-        exec(tool.cmd, (err) => {
-          if (err) console.error(`[Screenshot Plugin] ${tool.name} error:`, err.message);
-          resolve(true);
-        });
+    // Omarchy native screenshot: interactive smart region/window selection,
+    // automatically copied to clipboard via wl-copy and saved to Pictures.
+    exec('omarchy screenshot', (err) => {
+      if (err) {
+        console.error('[Screenshot Plugin] omarchy screenshot error:', err.message);
+        resolve(false);
         return;
-      } catch (e) { /* tool not found, try next */ }
-    }
-    console.warn('[Screenshot Plugin] No screenshot tool found');
-    resolve(false);
+      }
+      resolve(true);
+    });
   });
 }
 
